@@ -1,0 +1,14 @@
+initscript {
+    repositories {
+        maven {
+            url "https://releases.jfrog.io/artifactory/oss-releases"
+        }
+    }
+    dependencies {
+        classpath 'com.jfrog:gradle-deps-tree:+'
+    }
+}
+
+allprojects {
+    apply plugin: com.jfrog.GradleDepsTree
+}

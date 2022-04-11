@@ -1,0 +1,4 @@
+plugins {
+    id 'com.jfrog.gradle-deps-tree'
+    id 'java'
+}
