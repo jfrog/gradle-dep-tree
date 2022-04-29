@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -67,6 +68,12 @@ public class Utils {
             // Run generateDependencyTree and make sure the task was cached
             result = runGenerateDependencyTree(gradleVersion, projectDir);
             assertUpToDate(result);
+            assertOutput(result);
+
+            // Make a change in build.gradle file and make sure the cache was invalidated after running generateDependencyTree
+            Files.write(projectDir.toPath().resolve("build.gradle"), "\n".getBytes(), StandardOpenOption.APPEND);
+            result = runGenerateDependencyTree(gradleVersion, projectDir);
+            assertSuccess(result);
             assertOutput(result);
         }
     }

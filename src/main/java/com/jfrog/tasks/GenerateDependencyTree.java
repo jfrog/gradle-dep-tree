@@ -46,6 +46,23 @@ public class GenerateDependencyTree extends DefaultTask {
 
     /**
      * This method used by Gradle, to decide whether this task is up-to-date or should be running.
+     * If the build.gradle of the project or a build.gradle file of a parent was changed, the cache should be invalidated.
+     *
+     * @return a list of the build.gradle files of the project and its parents.
+     */
+    @InputFiles
+    @Classpath
+    public List<File> getInputFile() {
+        List<File> inputFiles = new ArrayList<>();
+        for (Project project = getProject(); project != null; project = project.getParent()) {
+            inputFiles.add(project.getBuildFile());
+        }
+        return inputFiles;
+    }
+
+    /**
+     * This method used by Gradle, to decide whether this task is up-to-date or should be running.
+     * If an output file is missing, the task should be running.
      *
      * @return a list of the output files of the task.
      */
