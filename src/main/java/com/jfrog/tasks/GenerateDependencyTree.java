@@ -45,8 +45,8 @@ public class GenerateDependencyTree extends DefaultTask {
     }
 
     /**
-     * This method used by Gradle, to decide whether this task is up-to-date or should be running.
-     * If the build.gradle of the project or a build.gradle file of a parent was changed, the cache should be invalidated.
+     * This method is used by Gradle, to decide whether this task is up-to-date or should be running.
+     * If the build.gradle of the project or a build.gradle file of a parent project was changed, the cache should be invalidated.
      *
      * @return a list of the build.gradle files of the project and its parents.
      */
@@ -61,8 +61,8 @@ public class GenerateDependencyTree extends DefaultTask {
     }
 
     /**
-     * This method used by Gradle, to decide whether this task is up-to-date or should be running.
-     * If an output file is missing, the task should be running.
+     * This method is used by Gradle, to decide whether this task is up-to-date or should be running.
+     * If an output file is missing, the task will be executed.
      *
      * @return a list of the output files of the task.
      */
@@ -103,7 +103,9 @@ public class GenerateDependencyTree extends DefaultTask {
     /**
      * Related projects:
      * - The current running project.
-     * - Subprojects that doesn't contain build.gradle file - this is needed to allow running this task concurrently on build.gradle files.
+     * - Subprojects that don't contain build.gradle file - this is needed to allow running this task concurrently on
+     * build.gradle files. The user should be allowed to run "gradle generateDependencyTree" on each one of the
+     * build.gradle files in his/here project.
      *
      * @return list of related projects.
      */
@@ -120,7 +122,9 @@ public class GenerateDependencyTree extends DefaultTask {
     }
 
     /**
-     * Get the output file of the project.
+     * Get the output file of the project. The output files are list of files under ${buildDir}/gradle-deps-tree
+     * directory. The files are generated in the end of the "generateDependencyTree" task, for each one of the related
+     * projects. To support special characters, the name of the output file is a base64 encoding of the project name.
      *
      * @param project - The current Gradle project
      * @return the output file of the project.
