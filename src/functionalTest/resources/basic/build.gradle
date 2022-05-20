@@ -1,0 +1,25 @@
+plugins {
+    id 'com.jfrog.gradle-deps-tree'
+    id 'java'
+    id 'eclipse'
+    id 'application'
+}
+
+repositories {
+    mavenCentral()
+}
+
+jar {
+    archiveBaseName = 'gs-gradle'
+    archiveVersion = '0.1.0'
+}
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+dependencies {
+    implementation "joda-time:joda-time:2.2"
+    testImplementation "junit:junit:4.12"
+    testImplementation 'missing:dependency:404'
+}
+

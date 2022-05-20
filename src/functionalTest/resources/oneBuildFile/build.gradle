@@ -1,0 +1,94 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    configurations.classpath {
+        resolutionStrategy {
+            cacheDynamicVersionsFor 0, 'seconds'
+            cacheChangingModulesFor 0, 'seconds'
+        }
+    }
+}
+
+plugins {
+    id 'com.jfrog.gradle-deps-tree'
+}
+
+def javaProjects() {
+    subprojects.findAll { new File(it.projectDir, 'src').directory }
+}
+
+allprojects {
+    group = 'org.jfrog.test.gradle.publish'
+    version = currentVersion
+    status = 'Integration'
+    repositories {
+        mavenCentral()
+    }
+}
+
+configure(javaProjects()) {
+    apply plugin: 'java'
+    apply plugin: 'maven-publish'
+
+    dependencies {
+        testImplementation 'junit:junit:4.7'
+    }
+
+    publishing {
+        publications {
+            mavenJava(MavenPublication) {
+                from components.java
+                artifact(file("$rootDir/gradle.properties"))
+            }
+        }
+    }
+}
+
+project('api') {
+    apply plugin: 'ivy-publish'
+
+    publishing {
+        publications {
+            ivyJava(IvyPublication) {
+                from components.java
+                artifact(file("$rootDir/settings.gradle")) {
+                    name "gradle-settings"
+                    extension "txt"
+                    type "text"
+                }
+                // The config below will add a extra attribute to the ivy.xml
+                // See http://ant.apache.org/ivy/history/latest-milestone/concept.html#extra
+                descriptor.withXml {
+                    asNode().info[0].attributes().put('e:architecture', 'amd64')
+                }
+            }
+        }
+    }
+
+    configurations {
+        spi
+    }
+
+    dependencies {
+        implementation project(':shared')
+        implementation module("commons-lang:commons-lang:2.4") {
+            dependency("commons-io:commons-io:1.2")
+        }
+        implementation group: 'org.apache.wicket', name: 'wicket', version: '1.3.7'
+
+    }
+
+// Just a smoke test that using this option does not lead to any exception
+    compileJava.options.compilerArgs = ['-Xlint:unchecked']
+}
+
+project('services:webservice') {
+    apply plugin: 'war'
+
+    dependencies {
+        implementation project(':shared'), 'commons-collections:commons-collections:3.2@jar', 'commons-io:commons-io:1.2', 'commons-lang:commons-lang:2.4@jar'
+        implementation group: 'org.apache.wicket', name: 'wicket', version: '1.3.7'
+        implementation project(':api')
+    }
+}

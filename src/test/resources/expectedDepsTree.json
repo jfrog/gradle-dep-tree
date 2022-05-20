@@ -1,0 +1,22 @@
+{
+  "unresolved": false,
+  "configurations": ["configuration-1"],
+  "children": {
+    "child-2": {
+      "unresolved": false,
+      "configurations": ["configuration-2"],
+      "children": {}
+    },
+    "child-1": {
+      "unresolved": false,
+      "configurations": ["configuration-1", "configuration-2"],
+      "children": {
+        "child-3": {
+          "unresolved": true,
+          "configurations": ["configuration-1"],
+          "children": {}
+        }
+      }
+    }
+  }
+}

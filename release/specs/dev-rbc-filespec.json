@@ -1,0 +1,8 @@
+{
+  "files": [
+    {
+      "pattern": "ecosys-oss-snapshot-local/(com/jfrog/gradle-deps-tree/*/gradle-deps-tree-*)",
+      "target": "oss-snapshot-local/{1}"
+    }
+  ]
+}
