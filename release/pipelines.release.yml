@@ -55,8 +55,6 @@ pipelines:
             - sed -i "s/\(version=\).*\$/\1${NEXT_VERSION}/" gradle.properties
             - git commit -am "[artifactory-release] Release version ${NEXT_VERSION} [skipRun]" --allow-empty
             - git tag ${NEXT_VERSION}
-            - git push
-            - git push --tags
 
             # Run build and publish
             - >
@@ -64,7 +62,7 @@ pipelines:
               JFROG_CLI_BUILD_NAME=$JFROG_CLI_BUILD_NAME
               JFROG_CLI_BUILD_NUMBER=$JFROG_CLI_BUILD_NUMBER
               JFROG_CLI_BUILD_PROJECT=$JFROG_CLI_BUILD_PROJECT
-              jf gradle clean build -x test artifactoryPublish
+              jf gradle clean build artifactoryPublish -x test -x functionalTest
             - jf rt bag && jf rt bce
             - jf rt bp
 
@@ -75,4 +73,7 @@ pipelines:
             # Update next development version
             - sed -i "s/\(version=\).*\$/\1${NEXT_DEVELOPMENT_VERSION}/" gradle.properties
             - git commit -am "[artifactory-release] Next development version [skipRun]"
+
+            # Push changes
             - git push
+            - git push --tags
