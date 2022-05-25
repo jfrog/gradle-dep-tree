@@ -1,7 +1,7 @@
 {
   "files": [
     {
-      "pattern": "ecosys-oss-release-local/(com/jfrog/gradle-deps-tree/${version}/gradle-deps-tree-*)",
+      "pattern": "ecosys-oss-release-local/(com/jfrog/gradle-dep-tree/${version}/gradle-dep-tree-*)",
       "target": "oss-release-local/{1}"
     }
   ]

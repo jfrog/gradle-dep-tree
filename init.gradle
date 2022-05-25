@@ -5,7 +5,7 @@ initscript {
         }
     }
     dependencies {
-        classpath 'com.jfrog:gradle-deps-tree:+'
+        classpath 'com.jfrog:gradle-dep-tree:+'
     }
 }
 

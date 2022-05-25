@@ -29,13 +29,13 @@ pipelines:
             # Set env
             - export CI=true
             - export JFROG_BUILD_STATUS=PASS
-            - export JFROG_CLI_BUILD_NAME=ecosystem-gradle-deps-tree-release
+            - export JFROG_CLI_BUILD_NAME=ecosystem-gradle-dep-tree-release
             - export JFROG_CLI_BUILD_NUMBER=$run_number
             - export JFROG_CLI_BUILD_PROJECT=ecosys
 
             # Configure git
             - git checkout master
-            - git remote set-url origin https://$int_il_automation_token@github.com/jfrog/gradle-deps-tree.git
+            - git remote set-url origin https://$int_il_automation_token@github.com/jfrog/gradle-dep-tree.git
 
             # Make sure versions provided
             - echo "Checking variables"
@@ -69,8 +69,8 @@ pipelines:
             - jf rt bp
 
             # Distribute release bundle
-            - jf ds rbc gradle-deps-tree $NEXT_VERSION --spec=./release/specs/prod-rbc-filespec.json --spec-vars="version=$NEXT_VERSION" --sign
-            - jf ds rbd gradle-deps-tree $NEXT_VERSION --site="releases.jfrog.io" --sync
+            - jf ds rbc gradle-dep-tree $NEXT_VERSION --spec=./release/specs/prod-rbc-filespec.json --spec-vars="version=$NEXT_VERSION" --sign
+            - jf ds rbd gradle-dep-tree $NEXT_VERSION --site="releases.jfrog.io" --sync
 
             # Update next development version
             - sed -i "s/\(version=\).*\$/\1${NEXT_DEVELOPMENT_VERSION}/" gradle.properties

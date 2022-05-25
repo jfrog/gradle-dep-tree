@@ -2,7 +2,7 @@ resources:
   - name: gradleDepsTreeSnapshotGit
     type: GitRepo
     configuration:
-      path: jfrog/gradle-deps-tree
+      path: jfrog/gradle-dep-tree
       gitProvider: il_automation
       buildOn:
         pullRequestCreate: true
@@ -14,7 +14,7 @@ resources:
   - name: gradleDepsTreeReleaseGit
     type: GitRepo
     configuration:
-      path: jfrog/gradle-deps-tree
+      path: jfrog/gradle-dep-tree
       gitProvider: il_automation
       buildOn:
         commit: false

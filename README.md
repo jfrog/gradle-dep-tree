@@ -1,6 +1,6 @@
-[![Test](https://github.com/jfrog/gradle-deps-tree/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/jfrog/gradle-deps-tree/actions/workflows/test.yml)
+[![Test](https://github.com/jfrog/gradle-dep-tree/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/jfrog/gradle-dep-tree/actions/workflows/test.yml)
 
-# 🐘 Gradle Deps Tree
+# 🐘 Gradle Dependency Tree
 
 This Gradle plugin reads the Gradle dependencies of a given Gradle project, and generates a dependency tree. This
 package was developed by JFrog, and is used by the [JFrog IDEA plugin](https://plugins.jetbrains.com/plugin/9834-jfrog)

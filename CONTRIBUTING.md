@@ -11,8 +11,8 @@
 Clone the sources and CD to the root directory of the project:
 
 ```
-git clone https://github.com/jfrog/gradle-deps-tree.git
-cd gradle-deps-tree
+git clone https://github.com/jfrog/gradle-dep-tree.git
+cd gradle-dep-tree
 ```
 
 Build the sources as follows:
@@ -29,7 +29,7 @@ On Windows run:
 gradlew.bat clean build
 ```
 
-Once completed, you'll find the gradle-deps-tree-<version>.jar at the build/libs/ directory.
+Once completed, you'll find the gradle-dep-tree-<version>.jar at the build/libs/ directory.
 
 ## Tests
 

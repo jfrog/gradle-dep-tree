@@ -27,15 +27,15 @@ dependencies {
 }
 
 pluginBundle {
-    website = "https://github.com/jfrog/gradle-deps-tree"
-    vcsUrl = "https://github.com/jfrog/gradle-deps-tree"
+    website = "https://github.com/jfrog/gradle-dep-tree"
+    vcsUrl = "https://github.com/jfrog/gradle-dep-tree"
     tags = listOf("gradle", "dependencies", "dependency-tree")
 }
 
 gradlePlugin {
     plugins {
         create("gradleDepsTree") {
-            id = "com.jfrog.gradle-deps-tree"
+            id = "com.jfrog.gradle-dep-tree"
             displayName = "Gradle Dependency Tree"
             description = "A plugin that generates a Gradle dependency tree in Json format"
             implementationClass = "com.jfrog.GradleDepsTree"
