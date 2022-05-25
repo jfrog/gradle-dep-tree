@@ -9,14 +9,14 @@ purposes and applications as well, by applying it in your build.gradle file.
 
 ## 🖥️ Usage
 
-Inject the plugin using the [init.gradle](./init.gradle) initialization script, and run *generateDependencyTree* in a
+Inject the plugin using the [init.gradle](./init.gradle) initialization script, and run *generateDepTrees* in a
 directory containing a build.gradle file. The plugin will generate a dependency tree for each subproject that does not
 contain a build.gradle file.
 
 The command:
 
 ```bash
-gradle clean generateDependencyTree -I <path/to/init.gradle> -q
+gradle clean generateDepTrees -I <path/to/init.gradle> -q
 ```
 
 Output:

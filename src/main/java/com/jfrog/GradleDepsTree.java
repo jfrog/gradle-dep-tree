@@ -1,6 +1,6 @@
 package com.jfrog;
 
-import com.jfrog.tasks.GenerateDependencyTree;
+import com.jfrog.tasks.GenerateDepTrees;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 
@@ -13,7 +13,7 @@ public class GradleDepsTree implements Plugin<Project> {
     @Override
     public void apply(@Nonnull Project project) {
         for (Project proj : (Set<Project>) project.getAllprojects()) {
-            proj.getTasks().maybeCreate(GenerateDependencyTree.TASK_NAME, GenerateDependencyTree.class);
+            proj.getTasks().maybeCreate(GenerateDepTrees.TASK_NAME, GenerateDepTrees.class);
         }
     }
 }

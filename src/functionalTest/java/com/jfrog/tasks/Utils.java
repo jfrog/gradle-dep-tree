@@ -50,29 +50,29 @@ public class Utils {
     }
 
     /**
-     * Run and assert generateDependencyTree task.
+     * Run and assert generateDepTrees task.
      *
      * @param gradleVersion - The Gradle version to use
      * @param projectNames  - The project names to use
      * @throws IOException in case of any I/O error.
      */
-    static void generateDependencyTree(String gradleVersion, Path... projectNames) throws IOException {
+    static void generateDepTrees(String gradleVersion, Path... projectNames) throws IOException {
         for (Path projectName : projectNames) {
             File projectDir = TEST_DIR.toPath().resolve(projectName).toFile();
 
-            // Run generateDependencyTree and assert success
-            BuildResult result = runGenerateDependencyTree(gradleVersion, projectDir);
+            // Run generateDepTrees and assert success
+            BuildResult result = runGenerateDepTrees(gradleVersion, projectDir);
             assertSuccess(result);
             assertOutput(result);
 
-            // Run generateDependencyTree and make sure the task was cached
-            result = runGenerateDependencyTree(gradleVersion, projectDir);
+            // Run generateDepTrees and make sure the task was cached
+            result = runGenerateDepTrees(gradleVersion, projectDir);
             assertUpToDate(result);
             assertOutput(result);
 
-            // Make a change in build.gradle file and make sure the cache was invalidated after running generateDependencyTree
+            // Make a change in build.gradle file and make sure the cache was invalidated after running generateDepTrees
             Files.write(projectDir.toPath().resolve("build.gradle"), "\n".getBytes(), StandardOpenOption.APPEND);
-            result = runGenerateDependencyTree(gradleVersion, projectDir);
+            result = runGenerateDepTrees(gradleVersion, projectDir);
             assertSuccess(result);
             assertOutput(result);
         }
@@ -127,7 +127,7 @@ public class Utils {
      * @throws IOException in case of any I/O error.
      */
     private static void assertOutput(BuildResult result) throws IOException {
-        // Collect the paths printed in the end of generateDependencyTree task
+        // Collect the paths printed in the end of generateDepTrees task
         Set<Path> expected = Arrays.stream(result.getOutput().split(lineSeparator()))
                 .map(Paths::get)
                 .map(Path::getFileName)
@@ -149,13 +149,13 @@ public class Utils {
      * @param projectDir    - The project directory
      * @return the build results.
      */
-    private static BuildResult runGenerateDependencyTree(String gradleVersion, File projectDir) {
+    private static BuildResult runGenerateDepTrees(String gradleVersion, File projectDir) {
         return GradleRunner.create()
                 .withGradleVersion(gradleVersion)
                 .withProjectDir(projectDir)
                 .withPluginClasspath()
                 .withDebug(true)
-                .withArguments("generateDependencyTree", "-q")
+                .withArguments("generateDepTrees", "-q")
                 .build();
     }
 }

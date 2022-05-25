@@ -22,17 +22,17 @@ import java.util.*;
 import static com.jfrog.Utils.toJsonString;
 
 /**
- * Represents the generateDependencyTree Gradle task.
+ * Represents the generateDepTrees Gradle task.
  *
  * @author yahavi
  **/
 @CacheableTask
-public class GenerateDependencyTree extends DefaultTask {
-    public static final String TASK_NAME = "generateDependencyTree";
+public class GenerateDepTrees extends DefaultTask {
+    public static final String TASK_NAME = "generateDepTrees";
 
     private final Path pluginOutputDir = Paths.get(getProject().getRootProject().getBuildDir().getPath(), "gradle-deps-tree");
 
-    public GenerateDependencyTree() {
+    public GenerateDepTrees() {
         // Disables executing this task on subprojects
         setImpliesSubProjects(true);
     }
@@ -76,7 +76,7 @@ public class GenerateDependencyTree extends DefaultTask {
     }
 
     @TaskAction
-    void generateDependencyTree() throws IOException {
+    void generateDepTrees() throws IOException {
         createOutputDir();
         for (Project project : getRelatedProjects()) {
             GradleDependencyTree dependencyTree = createProjectDependencyTree(project);
@@ -104,7 +104,7 @@ public class GenerateDependencyTree extends DefaultTask {
      * Related projects:
      * - The current running project.
      * - Subprojects that don't contain build.gradle file - this is needed to allow running this task concurrently on
-     * build.gradle files. The user should be allowed to run "gradle generateDependencyTree" on each one of the
+     * build.gradle files. The user should be allowed to run "gradle generateDepTrees" on each one of the
      * build.gradle files in his/here project.
      *
      * @return list of related projects.
@@ -123,7 +123,7 @@ public class GenerateDependencyTree extends DefaultTask {
 
     /**
      * Get the output file of the project. The output files are list of files under ${buildDir}/gradle-deps-tree
-     * directory. The files are generated in the end of the "generateDependencyTree" task, for each one of the related
+     * directory. The files are generated in the end of the "generateDepTrees" task, for each one of the related
      * projects. To support special characters, the name of the output file is a base64 encoding of the project name.
      *
      * @param project - The current Gradle project
