@@ -1,5 +1,5 @@
 pipelines:
-  - name: build_gradle_deps_tree_snapshot
+  - name: build_gradle_dep_tree_snapshot
     configuration:
       runtime:
         type: image
@@ -14,12 +14,12 @@ pipelines:
         type: Bash
         configuration:
           inputResources:
-            - name: gradleDepsTreeSnapshotGit
+            - name: gradleDepTreeSnapshotGit
           integrations:
             - name: entplus_deployer
         execution:
           onExecute:
-            - cd $res_gradleDepsTreeSnapshotGit_resourcePath
+            - cd $res_gradleDepTreeSnapshotGit_resourcePath
 
             # Set env
             - export CI=true
@@ -56,4 +56,4 @@ pipelines:
 
           onComplete:
             # Show tests in the *Tests* tab
-            - save_tests $res_gradleDepsTreeSnapshotGit_resourcePath/build/test-results/test/
+            - save_tests $res_gradleDepTreeSnapshotGit_resourcePath/build/test-results/test/

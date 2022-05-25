@@ -19,7 +19,7 @@ public class UtilsTest {
 
     @Test
     public void testToJsonString() throws IOException {
-        String expectedOutput = FileUtils.readFileToString(RESOURCES_DIR.resolve("expectedDepsTree.json").toFile(), StandardCharsets.UTF_8);
+        String expectedOutput = FileUtils.readFileToString(RESOURCES_DIR.resolve("expectedDepTree.json").toFile(), StandardCharsets.UTF_8);
         GradleDependencyTree dependencyTree = new GradleDependencyTree("configuration-1");
         GradleDependencyTree child1Conf1 = new GradleDependencyTree("configuration-1");
         GradleDependencyTree child1Conf2 = new GradleDependencyTree("configuration-2");

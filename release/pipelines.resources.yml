@@ -1,5 +1,5 @@
 resources:
-  - name: gradleDepsTreeSnapshotGit
+  - name: gradleDepTreeSnapshotGit
     type: GitRepo
     configuration:
       path: jfrog/gradle-dep-tree
@@ -11,7 +11,7 @@ resources:
       cancelPendingRunsOn:
         pullRequestUpdate: true
 
-  - name: gradleDepsTreeReleaseGit
+  - name: gradleDepTreeReleaseGit
     type: GitRepo
     configuration:
       path: jfrog/gradle-dep-tree

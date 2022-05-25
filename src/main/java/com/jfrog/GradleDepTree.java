@@ -8,7 +8,7 @@ import javax.annotation.Nonnull;
 import java.util.Set;
 
 @SuppressWarnings("unused")
-public class GradleDepsTree implements Plugin<Project> {
+public class GradleDepTree implements Plugin<Project> {
 
     @Override
     public void apply(@Nonnull Project project) {

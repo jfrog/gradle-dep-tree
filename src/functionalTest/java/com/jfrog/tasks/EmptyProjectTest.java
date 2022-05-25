@@ -35,7 +35,7 @@ public class EmptyProjectTest extends FunctionalTestBase {
     @Test(dataProvider = "gradleVersions")
     public void testNoDependenciesProject(String gradleVersion) throws IOException {
         generateDepTrees(gradleVersion, Paths.get("."));
-        Path outputDir = TEST_DIR.toPath().resolve("build").resolve("gradle-deps-tree");
+        Path outputDir = TEST_DIR.toPath().resolve("build").resolve("gradle-dep-tree");
         try (Stream<Path> files = Files.list(outputDir)) {
             Set<String> actualProjects = files.map(Path::getFileName).map(Path::toString).collect(Collectors.toSet());
             assertEquals(1, actualProjects.size());

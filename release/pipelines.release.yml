@@ -1,5 +1,5 @@
 pipelines:
-  - name: release_gradle_deps_tree
+  - name: release_gradle_dep_tree
     configuration:
       runtime:
         type: image
@@ -18,13 +18,13 @@ pipelines:
         type: Bash
         configuration:
           inputResources:
-            - name: gradleDepsTreeReleaseGit
+            - name: gradleDepTreeReleaseGit
           integrations:
             - name: il_automation
             - name: entplus_deployer
         execution:
           onExecute:
-            - cd $res_gradleDepsTreeReleaseGit_resourcePath
+            - cd $res_gradleDepTreeReleaseGit_resourcePath
 
             # Set env
             - export CI=true

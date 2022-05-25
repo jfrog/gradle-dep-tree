@@ -134,8 +134,8 @@ public class Utils {
                 .collect(Collectors.toSet());
         assertFalse(expected.isEmpty());
 
-        // Collect the files under "${buildDir}/gradle-deps-tree/" directory and compare
-        Path outputDir = TEST_DIR.toPath().resolve("build").resolve("gradle-deps-tree");
+        // Collect the files under "${buildDir}/gradle-dep-tree/" directory and compare
+        Path outputDir = TEST_DIR.toPath().resolve("build").resolve("gradle-dep-tree");
         try (Stream<Path> fileStream = Files.list(outputDir)) {
             Set<Path> actual = fileStream.map(Path::getFileName).collect(Collectors.toSet());
             assertEquals(actual, expected);

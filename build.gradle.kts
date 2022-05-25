@@ -34,11 +34,11 @@ pluginBundle {
 
 gradlePlugin {
     plugins {
-        create("gradleDepsTree") {
+        create("gradleDepTree") {
             id = "com.jfrog.gradle-dep-tree"
             displayName = "Gradle Dependency Tree"
             description = "A plugin that generates a Gradle dependency tree in Json format"
-            implementationClass = "com.jfrog.GradleDepsTree"
+            implementationClass = "com.jfrog.GradleDepTree"
         }
     }
     testSourceSets(functionalTest)

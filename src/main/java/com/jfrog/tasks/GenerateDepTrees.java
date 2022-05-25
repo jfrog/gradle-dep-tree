@@ -30,7 +30,7 @@ import static com.jfrog.Utils.toJsonString;
 public class GenerateDepTrees extends DefaultTask {
     public static final String TASK_NAME = "generateDepTrees";
 
-    private final Path pluginOutputDir = Paths.get(getProject().getRootProject().getBuildDir().getPath(), "gradle-deps-tree");
+    private final Path pluginOutputDir = Paths.get(getProject().getRootProject().getBuildDir().getPath(), "gradle-dep-tree");
 
     public GenerateDepTrees() {
         // Disables executing this task on subprojects
@@ -122,7 +122,7 @@ public class GenerateDepTrees extends DefaultTask {
     }
 
     /**
-     * Get the output file of the project. The output files are list of files under ${buildDir}/gradle-deps-tree
+     * Get the output file of the project. The output files are list of files under ${buildDir}/gradle-dep-tree
      * directory. The files are generated in the end of the "generateDepTrees" task, for each one of the related
      * projects. To support special characters, the name of the output file is a base64 encoding of the project name.
      *
@@ -134,7 +134,7 @@ public class GenerateDepTrees extends DefaultTask {
     }
 
     /**
-     * Create "${buildDir}/gradle-deps-tree" directory.
+     * Create "${buildDir}/gradle-dep-tree" directory.
      *
      * @throws IOException in case of any I/O error.
      */
@@ -160,7 +160,7 @@ public class GenerateDepTrees extends DefaultTask {
     }
 
     /**
-     * Populate the dependency tree with the given Gradle dependencies tree of a configuration.
+     * Populate the dependency tree with the given Gradle dependency tree of a configuration.
      *
      * @param gradleDependencyNode - Input - The root node of Gradle dependency tree
      * @param node                 - Output - The root dependency tree

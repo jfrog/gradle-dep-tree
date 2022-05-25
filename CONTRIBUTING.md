@@ -6,7 +6,7 @@
 
 # ⚒️ Building and Testing the Sources
 
-## Build Gradle Deps Tree
+## Build Gradle Dependency Tree
 
 Clone the sources and CD to the root directory of the project:
 

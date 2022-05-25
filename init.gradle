@@ -10,5 +10,5 @@ initscript {
 }
 
 allprojects {
-    apply plugin: com.jfrog.GradleDepsTree
+    apply plugin: com.jfrog.GradleDepTree
 }
