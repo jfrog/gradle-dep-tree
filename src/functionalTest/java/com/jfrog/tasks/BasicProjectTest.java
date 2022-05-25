@@ -32,7 +32,7 @@ public class BasicProjectTest extends FunctionalTestBase {
 
     @Test(dataProvider = "gradleVersions")
     public void testBasicProject(String gradleVersion) throws IOException {
-        generateDependencyTree(gradleVersion, Paths.get("."));
+        generateDepTrees(gradleVersion, Paths.get("."));
         Path outputDir = TEST_DIR.toPath().resolve("build").resolve("gradle-deps-tree");
         try (Stream<Path> files = Files.list(outputDir)) {
             Set<String> actualProjects = files.map(Path::getFileName).map(Path::toString).collect(Collectors.toSet());

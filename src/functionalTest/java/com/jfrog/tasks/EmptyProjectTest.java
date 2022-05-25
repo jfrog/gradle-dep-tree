@@ -14,7 +14,7 @@ import java.util.stream.Stream;
 
 import static com.jfrog.tasks.Consts.EMPTY;
 import static com.jfrog.tasks.Consts.TEST_DIR;
-import static com.jfrog.tasks.Utils.generateDependencyTree;
+import static com.jfrog.tasks.Utils.generateDepTrees;
 import static com.jfrog.tasks.Utils.objectMapper;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
@@ -34,7 +34,7 @@ public class EmptyProjectTest extends FunctionalTestBase {
 
     @Test(dataProvider = "gradleVersions")
     public void testNoDependenciesProject(String gradleVersion) throws IOException {
-        generateDependencyTree(gradleVersion, Paths.get("."));
+        generateDepTrees(gradleVersion, Paths.get("."));
         Path outputDir = TEST_DIR.toPath().resolve("build").resolve("gradle-deps-tree");
         try (Stream<Path> files = Files.list(outputDir)) {
             Set<String> actualProjects = files.map(Path::getFileName).map(Path::toString).collect(Collectors.toSet());
