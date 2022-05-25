@@ -19,7 +19,7 @@ jobs:
       - name: "CLA Assistant"
         if: ${{ steps.sign-or-recheck.outputs.match != '' || github.event_name == 'pull_request_target' }}
         # Alpha Release
-        uses: cla-assistant/github-action@v2.1.1-beta
+        uses: cla-assistant/github-action@v2.1.3-beta
         env:
           # Generated and maintained by github
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -31,5 +31,5 @@ jobs:
           remote-organization-name: 'jfrog'
           remote-repository-name: 'jfrog-signed-clas'
           # branch should not be protected
-          branch: 'main'
+          branch: 'master'
           allowlist: bot*
