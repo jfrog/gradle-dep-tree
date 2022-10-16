@@ -2,17 +2,19 @@ package com.jfrog.tasks;
 
 import com.jfrog.GradleDependencyTree;
 import org.gradle.api.DefaultTask;
+import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.internal.TaskInternal;
 import org.gradle.api.internal.artifacts.dependencies.DefaultProjectDependency;
+import org.gradle.api.specs.Spec;
 import org.gradle.api.tasks.*;
 import org.gradle.api.tasks.diagnostics.internal.graph.nodes.RenderableDependency;
 import org.gradle.api.tasks.diagnostics.internal.graph.nodes.RenderableModuleResult;
 import org.gradle.api.tasks.diagnostics.internal.graph.nodes.UnresolvableConfigurationResult;
 
 import javax.annotation.Nonnull;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -28,6 +30,7 @@ import static com.jfrog.Utils.toJsonString;
  **/
 @CacheableTask
 public class GenerateDepTrees extends DefaultTask {
+    public static final String OUTPUT_FILE_PROPERTY = "com.jfrog.depsTreeOutputFile";
     public static final String TASK_NAME = "generateDepTrees";
 
     private final Path pluginOutputDir = Paths.get(getProject().getRootProject().getBuildDir().getPath(), "gradle-dep-tree");
@@ -42,6 +45,21 @@ public class GenerateDepTrees extends DefaultTask {
     @Nonnull
     public String getName() {
         return TASK_NAME;
+    }
+
+    /**
+     * Assert that the 'com.jfrog.depsTreeOutputFile' system property is provided. Fail the task otherwise.
+     *
+     * @return the "OnlyIf" spec.
+     */
+    @Internal
+    @Override
+    @Nonnull
+    public Spec<? super TaskInternal> getOnlyIf() {
+        if (System.getProperty(OUTPUT_FILE_PROPERTY) == null) {
+            throw new GradleException("'" + OUTPUT_FILE_PROPERTY + "' system property is mandatory");
+        }
+        return super.getOnlyIf();
     }
 
     /**
@@ -94,8 +112,14 @@ public class GenerateDepTrees extends DefaultTask {
     @Override
     @Nonnull
     public TaskDependency getFinalizedBy() {
-        for (File file : getOutputFiles()) {
-            System.out.println(file.getAbsolutePath());
+        String outputFile = System.getProperty(OUTPUT_FILE_PROPERTY);
+        try (FileWriter writer = new FileWriter(outputFile, false)) {
+            for (File file : getOutputFiles()) {
+                writer.append(file.getAbsolutePath()).append(System.lineSeparator());
+            }
+            writer.flush();
+        } catch (IOException e) {
+            throw new GradleException("File '" + outputFile + "' is not writable", e);
         }
         return super.getFinalizedBy();
     }

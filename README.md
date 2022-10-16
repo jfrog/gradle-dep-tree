@@ -16,7 +16,7 @@ contain a build.gradle file.
 The command:
 
 ```bash
-gradle clean generateDepTrees -I <path/to/init.gradle> -q
+gradle clean generateDepTrees -I <path/to/init.gradle> -q -Dcom.jfrog.depsTreeOutputFile=<path/to/output/file>
 ```
 
 Output:
