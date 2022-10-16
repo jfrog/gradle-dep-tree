@@ -58,28 +58,29 @@ public class Utils {
      */
     static void generateDepTrees(String gradleVersion, Path... projectNames) throws IOException {
         Path outputFile = Files.createTempFile("gradle-deps-tree-test", "");
+        try {
+            for (Path projectName : projectNames) {
+                File projectDir = TEST_DIR.toPath().resolve(projectName).toFile();
 
-        for (Path projectName : projectNames) {
-            File projectDir = TEST_DIR.toPath().resolve(projectName).toFile();
+                // Run generateDepTrees and assert success
+                BuildResult result = runGenerateDepTrees(gradleVersion, projectDir, outputFile);
+                assertSuccess(result);
+                assertOutput(outputFile);
 
-            // Run generateDepTrees and assert success
-            BuildResult result = runGenerateDepTrees(gradleVersion, projectDir, outputFile);
-            assertSuccess(result);
-            assertOutput(outputFile);
+                // Run generateDepTrees and make sure the task was cached
+                result = runGenerateDepTrees(gradleVersion, projectDir, outputFile);
+                assertUpToDate(result);
+                assertOutput(outputFile);
 
-            // Run generateDepTrees and make sure the task was cached
-            result = runGenerateDepTrees(gradleVersion, projectDir, outputFile);
-            assertUpToDate(result);
-            assertOutput(outputFile);
-
-            // Make a change in build.gradle file and make sure the cache was invalidated after running generateDepTrees
-            Files.write(projectDir.toPath().resolve("build.gradle"), "\n".getBytes(), StandardOpenOption.APPEND);
-            result = runGenerateDepTrees(gradleVersion, projectDir, outputFile);
-            assertSuccess(result);
-            assertOutput(outputFile);
+                // Make a change in build.gradle file and make sure the cache was invalidated after running generateDepTrees
+                Files.write(projectDir.toPath().resolve("build.gradle"), "\n".getBytes(), StandardOpenOption.APPEND);
+                result = runGenerateDepTrees(gradleVersion, projectDir, outputFile);
+                assertSuccess(result);
+                assertOutput(outputFile);
+            }
+        } finally {
+            Files.deleteIfExists(outputFile);
         }
-
-        Files.deleteIfExists(outputFile);
     }
 
     /**
