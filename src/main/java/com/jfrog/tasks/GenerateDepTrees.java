@@ -5,22 +5,22 @@ import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
-import org.gradle.api.internal.TaskInternal;
-import org.gradle.api.internal.artifacts.dependencies.DefaultProjectDependency;
-import org.gradle.api.specs.Spec;
 import org.gradle.api.tasks.*;
-import org.gradle.api.tasks.diagnostics.internal.graph.nodes.RenderableDependency;
-import org.gradle.api.tasks.diagnostics.internal.graph.nodes.RenderableModuleResult;
-import org.gradle.api.tasks.diagnostics.internal.graph.nodes.UnresolvableConfigurationResult;
 
 import javax.annotation.Nonnull;
-import java.io.*;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.List;
+import java.util.Set;
 
+import static com.jfrog.GradleDependencyTreeUtils.addConfiguration;
 import static com.jfrog.Utils.toJsonString;
 
 /**
@@ -38,6 +38,12 @@ public class GenerateDepTrees extends DefaultTask {
     public GenerateDepTrees() {
         // Disables executing this task on subprojects
         setImpliesSubProjects(true);
+        setOnlyIf(element -> {
+            if (System.getProperty(OUTPUT_FILE_PROPERTY) == null) {
+                throw new GradleException("'" + OUTPUT_FILE_PROPERTY + "' system property is mandatory");
+            }
+            return true;
+        });
     }
 
     @Internal
@@ -45,21 +51,6 @@ public class GenerateDepTrees extends DefaultTask {
     @Nonnull
     public String getName() {
         return TASK_NAME;
-    }
-
-    /**
-     * Assert that the 'com.jfrog.depsTreeOutputFile' system property is provided. Fail the task otherwise.
-     *
-     * @return the "OnlyIf" spec.
-     */
-    @Internal
-    @Override
-    @Nonnull
-    public Spec<? super TaskInternal> getOnlyIf() {
-        if (System.getProperty(OUTPUT_FILE_PROPERTY) == null) {
-            throw new GradleException("'" + OUTPUT_FILE_PROPERTY + "' system property is mandatory");
-        }
-        return super.getOnlyIf();
     }
 
     /**
@@ -175,45 +166,8 @@ public class GenerateDepTrees extends DefaultTask {
     private GradleDependencyTree createProjectDependencyTree(Project project) {
         GradleDependencyTree results = new GradleDependencyTree();
         for (Configuration configuration : project.getConfigurations()) {
-            RenderableDependency root = configuration.isCanBeResolved() ?
-                    new RenderableModuleResult(configuration.getIncoming().getResolutionResult().getRoot()) :
-                    new UnresolvableConfigurationResult(configuration);
-            populateDependencyTree(root, results, configuration.getName(), new HashSet<>());
+            addConfiguration(results, configuration);
         }
         return results;
-    }
-
-    /**
-     * Populate the dependency tree with the given Gradle dependency tree of a configuration.
-     *
-     * @param gradleDependencyNode - Input - The root node of Gradle dependency tree
-     * @param node                 - Output - The root dependency tree
-     * @param configuration        - The configuration name
-     * @param added                - Set of added dependencies, used to prevent adding a loop in the dependency tree
-     */
-    @SuppressWarnings("unchecked")
-    private void populateDependencyTree(RenderableDependency gradleDependencyNode, GradleDependencyTree node, String configuration, Set<String> added) {
-        for (RenderableDependency gradleDependencyChild : (Set<RenderableDependency>) gradleDependencyNode.getChildren()) {
-            GradleDependencyTree child = new GradleDependencyTree(configuration);
-            String childName;
-            if (gradleDependencyChild.getId() instanceof DefaultProjectDependency) {
-                // Project dependency
-                DefaultProjectDependency projectDependency = (DefaultProjectDependency) gradleDependencyChild.getId();
-                childName = projectDependency.getGroup() + ":" + projectDependency.getName() + ":" + projectDependency.getVersion();
-            } else {
-                // If needed, remove the " -> " from the dependency version
-                childName = gradleDependencyChild.getName().replace(" -> ", ":");
-                boolean unresolved = gradleDependencyChild.getResolutionState() == RenderableDependency.ResolutionState.UNRESOLVED ||
-                        gradleDependencyChild.getResolutionState() == RenderableDependency.ResolutionState.FAILED;
-                child.setUnresolved(unresolved);
-            }
-            node.addChild(childName, child);
-
-            // If the dependency exist in the set, don't populate its children.
-            if (!added.add(childName)) {
-                continue;
-            }
-            populateDependencyTree(gradleDependencyChild, child, configuration, new HashSet<>(added));
-        }
     }
 }

@@ -3,6 +3,7 @@ package com.jfrog;
 import org.testng.annotations.Test;
 import org.testng.collections.Sets;
 
+import static com.jfrog.GradleDependencyTreeUtils.addChild;
 import static org.testng.Assert.*;
 
 /**
@@ -19,9 +20,9 @@ public class GradleDependencyTreeTest {
     @Test
     public void testOneChild() {
         GradleDependencyTree dependencyTree = new GradleDependencyTree("compile");
-        dependencyTree.addChild("child-1", new GradleDependencyTree("compile"));
-        dependencyTree.addChild("child-1", new GradleDependencyTree("compile"));
-        dependencyTree.addChild("child-1", new GradleDependencyTree("runtime"));
+        addChild(dependencyTree, "child-1", new GradleDependencyTree("compile"));
+        addChild(dependencyTree, "child-1", new GradleDependencyTree("compile"));
+        addChild(dependencyTree, "child-1", new GradleDependencyTree("runtime"));
 
         assertEquals(1, dependencyTree.getChildren().size());
         GradleDependencyTree actualChild = dependencyTree.getChildren().get("child-1");
@@ -33,9 +34,9 @@ public class GradleDependencyTreeTest {
         GradleDependencyTree dependencyTree = new GradleDependencyTree("compile");
         GradleDependencyTree child1 = new GradleDependencyTree("compile");
         child1.setUnresolved(true);
-        dependencyTree.addChild("child-1", child1);
-        dependencyTree.addChild("child-2", new GradleDependencyTree("compile"));
-        dependencyTree.addChild("child-2", new GradleDependencyTree("runtime"));
+        addChild(dependencyTree, "child-1", child1);
+        addChild(dependencyTree, "child-2", new GradleDependencyTree("compile"));
+        addChild(dependencyTree, "child-2", new GradleDependencyTree("runtime"));
 
         assertEquals(2, dependencyTree.getChildren().size());
         GradleDependencyTree actualChild1 = dependencyTree.getChildren().get("child-1");
