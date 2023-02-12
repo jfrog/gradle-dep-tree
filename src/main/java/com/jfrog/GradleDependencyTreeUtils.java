@@ -83,7 +83,7 @@ public class GradleDependencyTreeUtils {
         ResolvedDependencyResult resolvedDependency = (ResolvedDependencyResult) dependency;
         ModuleVersionIdentifier moduleVersion = resolvedDependency.getSelected().getModuleVersion();
         if (moduleVersion == null) {
-            // If the is no module version, then the dependency was not found in any repository
+            // If there is no module version, then the dependency was not found in any repository
             return;
         }
         if (!addedChildren.add(moduleVersion.toString())) {
@@ -103,7 +103,7 @@ public class GradleDependencyTreeUtils {
      * @param childToAdd - The child node
      */
     static void addChild(GradleDependencyTree parent, String id, GradleDependencyTree childToAdd) {
-        // If the child already exist, add the Gradle configurations of the input child
+        // If the child already exists, add the Gradle configurations of the input child
         if (parent.getChildren().containsKey(id)) {
             GradleDependencyTree child = parent.getChildren().get(id);
             child.getConfigurations().addAll(childToAdd.getConfigurations());
