@@ -51,8 +51,8 @@ pipelines:
             - jf rt bp
 
             # Distribute release bundle
-            - jf ds rbc gradle-dep-tree-snapshot $run_number --spec=./release/specs/dev-rbc-filespec.json --sign
-            - jf ds rbd gradle-dep-tree-snapshot $run_number --site="releases.jfrog.io" --sync
+            - jf ds rbc ecosystem-gradle-dep-tree-snapshot $run_number --spec=./release/specs/dev-rbc-filespec.json --sign
+            - jf ds rbd ecosystem-gradle-dep-tree-snapshot $run_number --site="releases.jfrog.io" --sync
 
           onComplete:
             # Show tests in the *Tests* tab

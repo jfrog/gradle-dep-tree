@@ -67,8 +67,8 @@ pipelines:
             - jf rt bp
 
             # Distribute release bundle
-            - jf ds rbc gradle-dep-tree $NEXT_VERSION --spec=./release/specs/prod-rbc-filespec.json --spec-vars="version=$NEXT_VERSION" --sign
-            - jf ds rbd gradle-dep-tree $NEXT_VERSION --site="releases.jfrog.io" --sync
+            - jf ds rbc ecosystem-gradle-dep-tree $NEXT_VERSION --spec=./release/specs/prod-rbc-filespec.json --spec-vars="version=$NEXT_VERSION" --sign
+            - jf ds rbd ecosystem-gradle-dep-tree $NEXT_VERSION --site="releases.jfrog.io" --sync
 
             # Update next development version
             - sed -i "s/\(version=\).*\$/\1${NEXT_DEVELOPMENT_VERSION}/" gradle.properties
