@@ -1,0 +1,43 @@
+{
+  "type" : "gradle",
+  "id" : "com.jfrog:gradle-dep-tree:2.1.x-SNAPSHOT",
+  "repository" : "maven-local",
+  "artifacts" : [ {
+    "type" : "javadoc-jar",
+    "sha1" : "22dd4db7d4f12050ca2891850c6fc0968bc5ce99",
+    "sha256" : "57915524939bbcc45093367073c3701f3cc4e17dc182dc6a28a203067c106864",
+    "md5" : "07fa6dccdd2cfb48b5174b33273813e4",
+    "name" : "gradle-dep-tree-2.1.x-SNAPSHOT-javadoc.jar",
+    "path" : "com/jfrog/gradle-dep-tree/2.1.x-SNAPSHOT/gradle-dep-tree-2.1.x-SNAPSHOT-javadoc.jar"
+  }, {
+    "type" : "sources-jar",
+    "sha1" : "1b7f6e79883de47ed6caec78d5fa8c9e9bf5db73",
+    "sha256" : "7138228f52ac72d7fa0bc7b8a988fd1583935fdd257258a3e46f0cda31c81313",
+    "md5" : "9bb0e94d880672b66570c908e2e67e65",
+    "name" : "gradle-dep-tree-2.1.x-SNAPSHOT-sources.jar",
+    "path" : "com/jfrog/gradle-dep-tree/2.1.x-SNAPSHOT/gradle-dep-tree-2.1.x-SNAPSHOT-sources.jar"
+  }, {
+    "type" : "jar",
+    "sha1" : "4b0d1bc57973c35f3d697dc889b84c10dc3847c9",
+    "sha256" : "8ab6ceea51fd12973a59ffdb5bad341855acdaf3e8454da9a4f510af2c551dcf",
+    "md5" : "2fbd4a3c23b399e6f4d3cccf956bc2db",
+    "name" : "gradle-dep-tree-2.1.x-SNAPSHOT.jar",
+    "path" : "com/jfrog/gradle-dep-tree/2.1.x-SNAPSHOT/gradle-dep-tree-2.1.x-SNAPSHOT.jar"
+  }, {
+    "type" : "module",
+    "sha1" : "952248a52e1d5f7c31e81b80e0bbbcd2403f4991",
+    "sha256" : "cd3ce51fcbda6f8007ec17a391adb0cc2f650c852625fcb8208350ffc1af9f13",
+    "md5" : "2fdbdfd98967d421b5500d985ed29006",
+    "name" : "gradle-dep-tree-2.1.x-SNAPSHOT.module",
+    "path" : "com/jfrog/gradle-dep-tree/2.1.x-SNAPSHOT/gradle-dep-tree-2.1.x-SNAPSHOT.module"
+  }, {
+    "type" : "pom",
+    "sha1" : "6dc8d0e60e7f3df497d1714c2a0a3709684e8601",
+    "sha256" : "f8495fad1f544a55c22d9296e81d364a4b429d8258670c063028e889c0238107",
+    "md5" : "8fead1898baab4aa76e222fde58d8eb8",
+    "name" : "gradle-dep-tree-2.1.x-SNAPSHOT.pom",
+    "path" : "com/jfrog/gradle-dep-tree/2.1.x-SNAPSHOT/gradle-dep-tree-2.1.x-SNAPSHOT.pom"
+  } ],
+  "excludedArtifacts" : [ ],
+  "dependencies" : [ ]
+}

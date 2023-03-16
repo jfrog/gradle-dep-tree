@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"com.jfrog.tasks","l":"GenerateDepTrees"},{"p":"com.jfrog","l":"GradleDependencyTree"},{"p":"com.jfrog","l":"GradleDependencyTreeUtils"},{"p":"com.jfrog","l":"GradleDepTree"},{"p":"com.jfrog","l":"Utils"}]
