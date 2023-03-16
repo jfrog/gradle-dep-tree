@@ -2,7 +2,7 @@ plugins {
     `java-gradle-plugin`
     `maven-publish`
     signing
-    id("io.github.gradle-nexus.publish-plugin") version "1.0.0"
+    id("io.github.gradle-nexus.publish-plugin") version "1.3.0"
     id("com.gradle.plugin-publish") version "0.+"
     id("com.jfrog.artifactory") version "4.31.7"
 }
