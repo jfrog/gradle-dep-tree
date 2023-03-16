@@ -1,0 +1,13 @@
+version: 1
+type: gradle
+resolver:
+  repo: maven-remote
+  serverId: ecosys
+deployer:
+  repo: maven-local
+  serverId: ecosys
+  deployMavenDescriptors: true
+  ivyPattern: '[organization]/[module]/ivy-[revision].xml'
+  artifactPattern: '[organization]/[module]/[revision]/[artifact]-[revision](-[classifier]).[ext]'
+usePlugin: true
+useWrapper: true
