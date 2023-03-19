@@ -1,7 +1,10 @@
 plugins {
     `java-gradle-plugin`
     `maven-publish`
+    signing
+    id("io.github.gradle-nexus.publish-plugin") version "1.3.0"
     id("com.gradle.plugin-publish") version "0.+"
+    id("com.jfrog.artifactory") version "4.31.7"
 }
 
 group = "com.jfrog"
@@ -65,4 +68,57 @@ val functionalTestTask = tasks.register<Test>("functionalTest") {
 
 tasks.check {
     dependsOn(functionalTestTask)
+}
+
+java {
+    withJavadocJar()
+    withSourcesJar()
+}
+
+nexusPublishing {
+    repositories {
+        sonatype()
+    }
+}
+
+publishing {
+    publications {
+        create<MavenPublication>("pluginMaven") {
+            pom {
+                name.set("gradle-dep-tree")
+                description.set("JFrog gradle-dep-tree")
+                url.set("https://github.com/jfrog/gradle-dep-tree")
+                licenses {
+                    license {
+                        name.set("The Apache License, Version 2.0")
+                        url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
+                    }
+                }
+                developers {
+                    developer {
+                        name.set("JFrog")
+                        email.set("eco-system@jfrog.com")
+                    }
+                }
+                scm {
+                    connection.set("scm:git:git://github.com/jfrog/gradle-dep-tree.git")
+                    developerConnection.set("scm:git:git@github.com/jfrog/gradle-dep-tree.git")
+                    url.set("https://github.com/jfrog/gradle-dep-tree")
+                }
+            }
+        }
+    }
+}
+
+tasks.named<org.jfrog.gradle.plugin.artifactory.task.ArtifactoryTask>("artifactoryPublish") {
+    publications(publishing.publications["pluginMaven"])
+}
+
+signing {
+    if (project.hasProperty("sign")) {
+        val signingKey: String? = findProperty("signingKey")?.toString()
+        val signingPassword: String? = findProperty("signingPassword")?.toString()
+        useInMemoryPgpKeys(signingKey, signingPassword)
+        sign(publishing.publications["pluginMaven"])
+    }
 }
