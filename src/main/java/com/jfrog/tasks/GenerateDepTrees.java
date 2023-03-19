@@ -18,6 +18,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Set;
 
 import static com.jfrog.GradleDependencyTreeUtils.addConfiguration;
 import static com.jfrog.Utils.toJsonString;
@@ -129,7 +130,7 @@ public class GenerateDepTrees extends DefaultTask {
         relatedProjects.add(getProject());
         boolean includeAllBuildFiles = Boolean.parseBoolean(System.getProperty(INCLUDE_ALL_BUILD_FILES));
 
-        for (Project project : getProject().getSubprojects()) {
+        for (Project project : (Set<Project>) getProject().getSubprojects()) {
             if (includeAllBuildFiles || !project.getBuildFile().exists()) {
                 relatedProjects.add(project);
             }
