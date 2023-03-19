@@ -18,7 +18,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
-import java.util.Set;
 
 import static com.jfrog.GradleDependencyTreeUtils.addConfiguration;
 import static com.jfrog.Utils.toJsonString;
@@ -32,6 +31,7 @@ import static com.jfrog.Utils.toJsonString;
 public class GenerateDepTrees extends DefaultTask {
     public static final String OUTPUT_FILE_PROPERTY = "com.jfrog.depsTreeOutputFile";
     public static final String TASK_NAME = "generateDepTrees";
+    public static final String INCLUDE_ALL_BUILD_FILES = "com.jfrog.includeAllBuildFiles";
 
     private final Path pluginOutputDir = Paths.get(getProject().getRootProject().getBuildDir().getPath(), "gradle-dep-tree");
 
@@ -127,9 +127,10 @@ public class GenerateDepTrees extends DefaultTask {
     private List<Project> getRelatedProjects() {
         List<Project> relatedProjects = new ArrayList<>();
         relatedProjects.add(getProject());
+        boolean includeAllBuildFiles = Boolean.parseBoolean(System.getProperty(INCLUDE_ALL_BUILD_FILES));
 
-        for (Project project : (Set<Project>) getProject().getSubprojects()) {
-            if (!project.getBuildFile().exists()) {
+        for (Project project : getProject().getSubprojects()) {
+            if (includeAllBuildFiles || !project.getBuildFile().exists()) {
                 relatedProjects.add(project);
             }
         }
