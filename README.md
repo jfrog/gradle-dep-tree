@@ -11,7 +11,7 @@ purposes and applications as well, by applying it in your build.gradle file.
 
 Inject the plugin using the [init.gradle](./init.gradle) initialization script, and run *generateDepTrees* in a
 directory containing a build.gradle file. The plugin will generate a dependency tree for each subproject that does not
-contain a build.gradle file.
+contain a build.gradle file. To generate a dependency tree for each subproject that contains a Gradle build file, set the `-Dcom.jfrog.includeAllBuildFile` flag to `true`.
 
 The command:
 
@@ -22,7 +22,9 @@ gradle clean generateDepTrees -I <path/to/init.gradle> -q -Dcom.jfrog.depsTreeOu
 Output:
 
 ```
-{"project": "<project-name>", "path": "<path/to/dependency/tree>"}
+"<path/to/dependency/tree1>"
+"<path/to/dependency/tree2>"
+...
 ```
 
 ## 🌲 Output Tree Structure
