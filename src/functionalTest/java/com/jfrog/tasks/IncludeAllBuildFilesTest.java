@@ -22,8 +22,8 @@ import static org.testng.Assert.*;
 /**
  * Functional tests for the project under resources/multi/
  * This project contain subprojects in a multiple build.gradle files.
- *
- * @author yahavi
+ * This project tests the INCLUDE_ALL_BUILD_FILES flag, which should add all the subprojects under resources/multi/.
+ * @author omerz
  **/
 public class IncludeAllBuildFilesTest extends FunctionalTestBase {
 
@@ -33,7 +33,7 @@ public class IncludeAllBuildFilesTest extends FunctionalTestBase {
     }
 
     @Test(dataProvider = "gradleVersions")
-    public void testRootBuildFile(String gradleVersion) throws IOException {
+    public void testAllBuildFiles(String gradleVersion) throws IOException {
         generateDepTrees(gradleVersion, true, Paths.get("."));
         Path outputDir = TEST_DIR.toPath().resolve("build").resolve("gradle-dep-tree");
         try (Stream<Path> files = Files.list(outputDir)) {
