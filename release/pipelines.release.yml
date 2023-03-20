@@ -47,7 +47,7 @@ pipelines:
             - curl -fL https://install-cli.jfrog.io | sh
             - jf c rm --quiet
             - jf c add internal --url=$int_entplus_deployer_url --user=$int_entplus_deployer_user --password=$int_entplus_deployer_apikey
-            - jf gradlec --use-wrapper --repo-resolve ecosys-maven-remote --repo-deploy ecosys-oss-release-local --deploy-maven-desc --uses-plugin
+            - jf gradlec --use-wrapper --repo-resolve ecosys-maven-remote --repo-deploy ecosys-oss-release-local --deploy-maven-desc
 
             # Run audit
             - jf audit
@@ -56,18 +56,22 @@ pipelines:
             - sed -i "s/\(version=\).*\$/\1${NEXT_VERSION}/" gradle.properties
             - git commit -am "[artifactory-release] Release version ${NEXT_VERSION} [skipRun]" --allow-empty
             - git tag ${NEXT_VERSION}
-
-            # Run build and publish
-            - >
-              ORG_GRADLE_PROJECT_signingKey=$(echo $int_mvn_central_signingKey | base64 -d)
-              ORG_GRADLE_PROJECT_signingPassword=$int_mvn_central_signingPassword
-              jf gradle clean build artifactoryPublish -x test -x functionalTest -Psign
-            - jf rt bag && jf rt bce
-            - jf rt bp
-
-            # Distribute release bundle
-            - jf ds rbc ecosystem-gradle-dep-tree $NEXT_VERSION --spec=./release/specs/prod-rbc-filespec.json --spec-vars="version=$NEXT_VERSION" --sign
-            - jf ds rbd ecosystem-gradle-dep-tree $NEXT_VERSION --site="releases.jfrog.io" --sync
+#
+#            # Run build and publish
+#            - >
+#              env -i PATH=$PATH HOME=$HOME
+#              JFROG_CLI_BUILD_NAME=$JFROG_CLI_BUILD_NAME
+#              JFROG_CLI_BUILD_NUMBER=$JFROG_CLI_BUILD_NUMBER
+#              JFROG_CLI_BUILD_PROJECT=$JFROG_CLI_BUILD_PROJECT
+#              ORG_GRADLE_PROJECT_signingKey=$(echo $int_mvn_central_signingKey | base64 -d)
+#              ORG_GRADLE_PROJECT_signingPassword=$int_mvn_central_signingPassword
+#              jf gradle clean build -x test -x functionalTest -Psign
+#            - jf rt bag && jf rt bce
+#            - jf rt bp
+#
+#            # Distribute release bundle
+#            - jf ds rbc ecosystem-gradle-dep-tree $NEXT_VERSION --spec=./release/specs/prod-rbc-filespec.json --spec-vars="version=$NEXT_VERSION" --sign
+#            - jf ds rbd ecosystem-gradle-dep-tree $NEXT_VERSION --site="releases.jfrog.io" --sync
 
             # Publish to Maven Central
             - >
