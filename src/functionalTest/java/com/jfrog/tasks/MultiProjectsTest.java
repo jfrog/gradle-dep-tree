@@ -34,7 +34,7 @@ public class MultiProjectsTest extends FunctionalTestBase {
 
     @Test(dataProvider = "gradleVersions")
     public void testRootBuildFile(String gradleVersion) throws IOException {
-        generateDepTrees(gradleVersion, Paths.get("."));
+        generateDepTrees(gradleVersion, false, Paths.get("."));
         Path outputDir = TEST_DIR.toPath().resolve("build").resolve("gradle-dep-tree");
         try (Stream<Path> files = Files.list(outputDir)) {
             Set<String> actualProjects = files.map(Path::getFileName).map(Path::toString).collect(Collectors.toSet());
@@ -60,7 +60,7 @@ public class MultiProjectsTest extends FunctionalTestBase {
 
     @Test(dataProvider = "gradleVersions")
     public void testApiBuildFile(String gradleVersion) throws IOException {
-        generateDepTrees(gradleVersion, Paths.get("api"));
+        generateDepTrees(gradleVersion, false, Paths.get("api"));
         Path outputDir = TEST_DIR.toPath().resolve("build").resolve("gradle-dep-tree");
         try (Stream<Path> files = Files.list(outputDir)) {
             Set<String> actualProjects = files.map(Path::getFileName).map(Path::toString).collect(Collectors.toSet());
@@ -77,7 +77,7 @@ public class MultiProjectsTest extends FunctionalTestBase {
 
     @Test(dataProvider = "gradleVersions")
     public void testWebserviceBuildFile(String gradleVersion) throws IOException {
-        generateDepTrees(gradleVersion, Paths.get("services", "webservice"));
+        generateDepTrees(gradleVersion, false, Paths.get("services", "webservice"));
         Path outputDir = TEST_DIR.toPath().resolve("build").resolve("gradle-dep-tree");
         try (Stream<Path> files = Files.list(outputDir)) {
             Set<String> actualProjects = files.map(Path::getFileName).map(Path::toString).collect(Collectors.toSet());
