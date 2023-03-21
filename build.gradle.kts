@@ -4,7 +4,6 @@ plugins {
     signing
     id("io.github.gradle-nexus.publish-plugin") version "1.3.0"
     id("com.gradle.plugin-publish") version "0.+"
-    id("com.jfrog.artifactory") version "4.31.7"
 }
 
 group = "com.jfrog"
@@ -36,6 +35,7 @@ pluginBundle {
 }
 
 gradlePlugin {
+    isAutomatedPublishing = false
     plugins {
         create("gradleDepTree") {
             id = "com.jfrog.gradle-dep-tree"
@@ -83,7 +83,7 @@ nexusPublishing {
 
 publishing {
     publications {
-        create<MavenPublication>("pluginMaven") {
+        create<MavenPublication>("mavenJava") {
             pom {
                 name.set("gradle-dep-tree")
                 description.set("JFrog gradle-dep-tree")
@@ -106,12 +106,10 @@ publishing {
                     url.set("https://github.com/jfrog/gradle-dep-tree")
                 }
             }
+
+            from(components["java"])
         }
     }
-}
-
-tasks.named<org.jfrog.gradle.plugin.artifactory.task.ArtifactoryTask>("artifactoryPublish") {
-    publications(publishing.publications["pluginMaven"])
 }
 
 signing {
@@ -119,6 +117,6 @@ signing {
         val signingKey: String? = findProperty("signingKey")?.toString()
         val signingPassword: String? = findProperty("signingPassword")?.toString()
         useInMemoryPgpKeys(signingKey, signingPassword)
-        sign(publishing.publications["pluginMaven"])
+        sign(publishing.publications["mavenJava"])
     }
 }
