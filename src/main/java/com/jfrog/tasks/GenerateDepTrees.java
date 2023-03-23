@@ -104,7 +104,9 @@ public class GenerateDepTrees extends DefaultTask {
     @Override
     @Nonnull
     public TaskDependency getFinalizedBy() {
-        String outputFile = System.getProperty(OUTPUT_FILE_PROPERTY);
+        String outputFileName = System.getProperty(OUTPUT_FILE_PROPERTY);
+        String projectPath = getProject().getProjectDir().getAbsolutePath();
+        File outputFile = new File(projectPath, outputFileName);
         try (FileWriter writer = new FileWriter(outputFile, false)) {
             for (File file : getOutputFiles()) {
                 writer.append(file.getAbsolutePath()).append(System.lineSeparator());
