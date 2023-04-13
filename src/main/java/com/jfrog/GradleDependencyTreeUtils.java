@@ -9,6 +9,7 @@ import org.gradle.api.artifacts.result.ResolvedDependencyResult;
 import org.gradle.api.artifacts.result.UnresolvedDependencyResult;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -23,13 +24,14 @@ public class GradleDependencyTreeUtils {
      * Add Gradle configuration including its all dependencies.
      *
      * @param root          - The root node
-     * @param configuration - Resolve or unresolved Gradle configuration
+     * @param configuration - Resolved or unresolved Gradle configuration
+     * @param nodes         - A map of all nodes mapped by their module ID (group:name:version)
      */
-    public static void addConfiguration(GradleDependencyTree root, Configuration configuration) {
+    public static void addConfiguration(GradleDependencyNode root, Configuration configuration, Map<String, GradleDependencyNode> nodes) {
         if (configuration.isCanBeResolved()) {
-            addResolvedConfiguration(root, configuration);
+            addResolvedConfiguration(root, configuration, nodes);
         } else {
-            addUnresolvedConfiguration(root, configuration);
+            addUnresolvedConfiguration(root, configuration, nodes);
         }
     }
 
@@ -38,29 +40,31 @@ public class GradleDependencyTreeUtils {
      *
      * @param root          - The root node
      * @param configuration - Resolved Gradle configuration
+     * @param nodes         - A map of all nodes mapped by their module ID (group:name:version)
      */
-    private static void addResolvedConfiguration(GradleDependencyTree root, Configuration configuration) {
+    private static void addResolvedConfiguration(GradleDependencyNode root, Configuration configuration, Map<String, GradleDependencyNode> nodes) {
         root.getConfigurations().add(configuration.getName());
         ResolvedComponentResult componentResult = configuration.getIncoming().getResolutionResult().getRoot();
         for (DependencyResult dependency : componentResult.getDependencies()) {
-            populateTree(root, configuration.getName(), dependency, new HashSet<>());
+            populateTree(root, configuration.getName(), dependency, new HashSet<>(), nodes);
         }
     }
 
     /**
      * Add unresolved configuration. An unresolved configuration can contain only direct dependencies.
      *
-     * @param node          - The parent node
+     * @param root          - The parent node
      * @param configuration - Unresolved Gradle configuration
+     * @param nodes         - A map of all nodes mapped by their module ID (group:name:version)
      */
-    private static void addUnresolvedConfiguration(GradleDependencyTree node, Configuration configuration) {
+    private static void addUnresolvedConfiguration(GradleDependencyNode root, Configuration configuration, Map<String, GradleDependencyNode> nodes) {
         for (Dependency dependency : configuration.getDependencies()) {
-            GradleDependencyTree child = new GradleDependencyTree(configuration.getName());
+            GradleDependencyNode child = new GradleDependencyNode(configuration.getName());
             child.setUnresolved(true);
             if (dependency.getVersion() != null) {
                 // If the version is null, the dependency does not contain an ID and we should not add it.
                 // For example: "implementation gradleApi()"
-                addChild(node, String.join(":", dependency.getGroup(), dependency.getName(), dependency.getVersion()), child);
+                addChild(root, String.join(":", dependency.getGroup(), dependency.getName(), dependency.getVersion()), child, nodes);
             }
         }
     }
@@ -72,12 +76,13 @@ public class GradleDependencyTreeUtils {
      * @param configurationName - The configuration name
      * @param dependency        - Resolved or unresolved dependency
      * @param addedChildren     - Set used to remove duplications to make sure there is no loop in the tree
+     * @param nodes             - A map of all nodes mapped by their module ID (group:name:version)
      */
-    private static void populateTree(GradleDependencyTree node, String configurationName, DependencyResult dependency, Set<String> addedChildren) {
-        GradleDependencyTree child = new GradleDependencyTree(configurationName);
+    private static void populateTree(GradleDependencyNode node, String configurationName, DependencyResult dependency, Set<String> addedChildren, Map<String, GradleDependencyNode> nodes) {
+        GradleDependencyNode child = new GradleDependencyNode(configurationName);
         if (dependency instanceof UnresolvedDependencyResult) {
             child.setUnresolved(true);
-            addChild(node, dependency.getRequested().getDisplayName(), child);
+            addChild(node, dependency.getRequested().getDisplayName(), child, nodes);
             return;
         }
         ResolvedDependencyResult resolvedDependency = (ResolvedDependencyResult) dependency;
@@ -89,9 +94,9 @@ public class GradleDependencyTreeUtils {
         if (!addedChildren.add(moduleVersion.toString())) {
             return;
         }
-        addChild(node, moduleVersion.toString(), child);
+        addChild(node, moduleVersion.toString(), child, nodes);
         for (DependencyResult dependencyResult : resolvedDependency.getSelected().getDependencies()) {
-            populateTree(child, configurationName, dependencyResult, new HashSet<>(addedChildren));
+            populateTree(child, configurationName, dependencyResult, new HashSet<>(addedChildren), nodes);
         }
     }
 
@@ -99,17 +104,19 @@ public class GradleDependencyTreeUtils {
      * Add a child to the dependency tree.
      *
      * @param parent     - The parent node
-     * @param id         - The child ID
+     * @param childId    - The child ID
      * @param childToAdd - The child node
+     * @param nodes      - A map of all nodes mapped by their module ID (group:name:version)
      */
-    static void addChild(GradleDependencyTree parent, String id, GradleDependencyTree childToAdd) {
-        // If the child already exists, add the Gradle configurations of the input child
-        if (parent.getChildren().containsKey(id)) {
-            GradleDependencyTree child = parent.getChildren().get(id);
+    static void addChild(GradleDependencyNode parent, String childId, GradleDependencyNode childToAdd, Map<String, GradleDependencyNode> nodes) {
+        GradleDependencyNode child = nodes.get(childId);
+        if (child == null) {
+            nodes.put(childId, childToAdd);
+        } else {
+            // If the child already exists, add the Gradle configurations of the input child
             child.getConfigurations().addAll(childToAdd.getConfigurations());
             child.setUnresolved(child.isUnresolved() && childToAdd.isUnresolved());
-        } else {
-            parent.getChildren().put(id, childToAdd);
         }
+        parent.getChildren().add(childId);
     }
 }
