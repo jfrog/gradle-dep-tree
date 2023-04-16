@@ -6,6 +6,8 @@ public class GradleDepTreeResults {
     private String root;
     private Map<String, GradleDependencyNode> nodes;
 
+    // Empty constructor for deserialization
+    @SuppressWarnings("unused")
     public GradleDepTreeResults() {
     }
 

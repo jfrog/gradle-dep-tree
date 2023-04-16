@@ -1,22 +1,32 @@
 {
-  "unresolved": false,
-  "configurations": ["configuration-1"],
-  "children": {
+  "root": "dep",
+  "nodes": {
     "child-2": {
       "unresolved": false,
-      "configurations": ["configuration-2"],
-      "children": {}
+      "configurations": [
+        "configuration-1"
+      ],
+      "children": [
+        "dep"
+      ]
     },
     "child-1": {
+      "unresolved": true,
+      "configurations": [
+        "configuration-1",
+        "configuration-2"
+      ],
+      "children": []
+    },
+    "dep": {
       "unresolved": false,
-      "configurations": ["configuration-1", "configuration-2"],
-      "children": {
-        "child-3": {
-          "unresolved": true,
-          "configurations": ["configuration-1"],
-          "children": {}
-        }
-      }
+      "configurations": [
+        "configuration-1"
+      ],
+      "children": [
+        "child-1",
+        "child-2"
+      ]
     }
   }
 }

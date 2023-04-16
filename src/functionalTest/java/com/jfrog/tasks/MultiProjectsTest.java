@@ -1,6 +1,6 @@
 package com.jfrog.tasks;
 
-import com.jfrog.GradleDependencyTree;
+import com.jfrog.GradleDependencyNode;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -40,7 +40,7 @@ public class MultiProjectsTest extends FunctionalTestBase {
             Set<String> actualProjects = files.map(Path::getFileName).map(Path::toString).collect(Collectors.toSet());
             assertEquals(actualProjects.size(), 3);
             for (String actualProject : actualProjects) {
-                GradleDependencyTree dependencyTree = objectMapper.readValue(outputDir.resolve(actualProject).toFile(), GradleDependencyTree.class);
+                GradleDependencyNode dependencyTree = objectMapper.readValue(outputDir.resolve(actualProject).toFile(), GradleDependencyNode.class);
                 String projectName = new String(Base64.getDecoder().decode(actualProject), StandardCharsets.UTF_8);
                 switch (projectName) {
                     case "shared":
@@ -66,7 +66,7 @@ public class MultiProjectsTest extends FunctionalTestBase {
             Set<String> actualProjects = files.map(Path::getFileName).map(Path::toString).collect(Collectors.toSet());
             assertEquals(actualProjects.size(), 1);
             for (String actualProject : actualProjects) {
-                GradleDependencyTree dependencyTree = objectMapper.readValue(outputDir.resolve(actualProject).toFile(), GradleDependencyTree.class);
+                GradleDependencyNode dependencyTree = objectMapper.readValue(outputDir.resolve(actualProject).toFile(), GradleDependencyNode.class);
                 assertTrue(dependencyTree.getChildren().size() > 3);
                 assertChild(dependencyTree, "junit:junit:4.7", "testImplementation", false);
                 assertChild(dependencyTree, "commons-lang:commons-lang:2.4", "implementation", false);
@@ -83,7 +83,7 @@ public class MultiProjectsTest extends FunctionalTestBase {
             Set<String> actualProjects = files.map(Path::getFileName).map(Path::toString).collect(Collectors.toSet());
             assertEquals(1, actualProjects.size());
             for (String actualProject : actualProjects) {
-                GradleDependencyTree dependencyTree = objectMapper.readValue(outputDir.resolve(actualProject).toFile(), GradleDependencyTree.class);
+                GradleDependencyNode dependencyTree = objectMapper.readValue(outputDir.resolve(actualProject).toFile(), GradleDependencyNode.class);
                 assertTrue(dependencyTree.getChildren().size() > 4);
                 assertChild(dependencyTree, "junit:junit:4.7", "testImplementation", false);
                 assertChild(dependencyTree, "commons-lang:commons-lang:2.4", "implementation", false);

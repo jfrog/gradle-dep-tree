@@ -1,27 +1,25 @@
 package com.jfrog;
 
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
 /**
  * @author yahavi
  **/
-public class GradleDependencyTree {
-    private final Map<String, GradleDependencyTree> children = new HashMap<>();
+public class GradleDependencyNode {
+    private final Set<String> children = new HashSet<>();
     // The Gradle configuration such as compileJava, implementation, testImplementation, etc.
     private final Set<String> configurations = new HashSet<>();
     private boolean unresolved;
 
-    public GradleDependencyTree() {
+    public GradleDependencyNode() {
     }
 
-    public GradleDependencyTree(String configuration) {
+    public GradleDependencyNode(String configuration) {
         this.configurations.add(configuration);
     }
 
-    public Map<String, GradleDependencyTree> getChildren() {
+    public Set<String> getChildren() {
         return children;
     }
 
