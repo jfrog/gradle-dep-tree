@@ -94,10 +94,10 @@ public class GradleDependencyTreeUtils {
         if (!addedChildren.add(moduleVersion.toString())) {
             return;
         }
-        addChild(node, moduleVersion.toString(), child, nodes);
         for (DependencyResult dependencyResult : resolvedDependency.getSelected().getDependencies()) {
             populateTree(child, configurationName, dependencyResult, new HashSet<>(addedChildren), nodes);
         }
+        addChild(node, moduleVersion.toString(), child, nodes);
     }
 
     /**
@@ -116,6 +116,7 @@ public class GradleDependencyTreeUtils {
             // If the child already exists, add the Gradle configurations of the input child
             child.getConfigurations().addAll(childToAdd.getConfigurations());
             child.setUnresolved(child.isUnresolved() && childToAdd.isUnresolved());
+            child.getChildren().addAll(childToAdd.getChildren());
         }
         parent.getChildren().add(childId);
     }
