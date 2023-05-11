@@ -76,6 +76,9 @@ public class GradleDependencyTreeUtils {
     private static void populateTree(GradleDependencyTree node, String configurationName, DependencyResult dependency, Set<String> addedChildren) {
         GradleDependencyTree child = new GradleDependencyTree(configurationName);
         if (dependency instanceof UnresolvedDependencyResult) {
+            if (!addedChildren.add(dependency.getRequested().getDisplayName())) {
+                return;
+            }
             child.setUnresolved(true);
             addChild(node, dependency.getRequested().getDisplayName(), child);
             return;
@@ -91,7 +94,7 @@ public class GradleDependencyTreeUtils {
         }
         addChild(node, moduleVersion.toString(), child);
         for (DependencyResult dependencyResult : resolvedDependency.getSelected().getDependencies()) {
-            populateTree(child, configurationName, dependencyResult, new HashSet<>(addedChildren));
+            populateTree(child, configurationName, dependencyResult, addedChildren);
         }
     }
 
