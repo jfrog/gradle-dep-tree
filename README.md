@@ -1,3 +1,4 @@
+[![Scanned by Frogbot](https://raw.github.com/jfrog/frogbot/master/images/frogbot-badge.svg)](https://github.com/jfrog/frogbot#readme)
 [![Test](https://github.com/jfrog/gradle-dep-tree/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/jfrog/gradle-dep-tree/actions/workflows/test.yml)
 
 # 🐘 Gradle Dependency Tree
