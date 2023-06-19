@@ -4,7 +4,7 @@
 # 🐘 Gradle Dependency Tree
 
 This Gradle plugin reads the Gradle dependencies of a given Gradle project, and generates a dependency tree. This
-package was developed by JFrog, and is used by the [JFrog IDEA plugin](https://plugins.jetbrains.com/plugin/9834-jfrog)
+package was developed by JFrog, and is used by the [JFrog IntelliJ IDEA Plugin](https://plugins.jetbrains.com/plugin/9834-jfrog)
 to generate the dependency tree for projects using Gradle dependencies. You may find this plugin useful for other
 purposes and applications as well, by applying it in your build.gradle file.
 
@@ -32,18 +32,17 @@ Output:
 
 ```json
 {
-  "unresolved": false,
-  "configurations": ["implementation", "runtimeImplementation"],
-  "children": {
-    "child-1": {
+  "root": "org.jfrog.example.gradle:shared:1.0-SNAPSHOT",
+  "nodes": {
+    "junit:junit:4.7": {
       "unresolved": false,
-      "configurations": ["implementation"],
-      "children": { }
+      "configurations": ["testCompileClasspath", "testImplementation", "testRuntimeClasspath"],
+      "children": []
     },
-    "child-2": {
-      "unresolved": true,
-      "configurations": ["implementation"],
-      "children": {}
+    "org.jfrog.example.gradle:shared:1.0-SNAPSHOT": {
+      "unresolved": false,
+      "configurations": ["compileClasspath", "runtimeClasspath", "testCompileClasspath", "testRuntimeClasspath"],
+      "children": ["junit:junit:4.7"]
     }
   }
 }
