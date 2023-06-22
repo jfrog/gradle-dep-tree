@@ -2,9 +2,7 @@ package com.jfrog;
 
 import org.gradle.api.GradleException;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -15,13 +13,15 @@ import static java.lang.System.lineSeparator;
  * @author yahavi
  **/
 public class Utils {
+    private static final String indentationSpace = "  ";
+
     public static void saveToFileAsJson(File outputFile, GradleDepTreeResults results) {
-        try (FileWriter writer = new FileWriter(outputFile)) {
+        try (FileWriter fileWriter = new FileWriter(outputFile);
+             Writer writer = new BufferedWriter(fileWriter)) {
             writer.append("{").append(lineSeparator());
-            String baseIndentation = "  ";
-            writer.append(baseIndentation).append(quotedKey("root")).append("\"").append(results.getRoot()).append("\",").append(lineSeparator());
-            writer.append(baseIndentation).append(quotedKey("nodes"));
-            appendMap(writer, results.getNodes(), baseIndentation);
+            writer.append(indentationSpace).append(quotedKey("root")).append("\"").append(results.getRoot()).append("\",").append(lineSeparator());
+            writer.append(indentationSpace).append(quotedKey("nodes"));
+            appendMap(writer, results.getNodes(), indentationSpace);
             writer.append(lineSeparator()).append("}");
             writer.flush();
         } catch (IOException e) {
@@ -29,9 +29,9 @@ public class Utils {
         }
     }
 
-    private static void appendToFileAsJson(FileWriter writer, GradleDependencyNode dependencyTree, String baseIndentation) throws IOException {
+    private static void appendToFileAsJson(Writer writer, GradleDependencyNode dependencyTree, String baseIndentation) throws IOException {
         writer.append("{").append(lineSeparator());
-        String keyIndentation = baseIndentation + "  ";
+        String keyIndentation = baseIndentation + indentationSpace;
         writer.append(keyIndentation).append(quotedKey("unresolved")).append(String.valueOf(dependencyTree.isUnresolved())).append(",").append(lineSeparator());
         writer.append(keyIndentation).append(quotedKey("configurations")).append(stringSetToJson(dependencyTree.getConfigurations())).append(",").append(lineSeparator());
         writer.append(keyIndentation).append(quotedKey("children")).append(stringSetToJson(dependencyTree.getChildren()));
@@ -49,8 +49,9 @@ public class Utils {
                 .collect(Collectors.joining(", ", "[", "]"));
     }
 
-    private static void appendMap(FileWriter writer, Map<String, GradleDependencyNode> map, String baseIndentation) throws IOException {
-        String keyIndentation = baseIndentation + "  ";
+    @SuppressWarnings("SameParameterValue")
+    private static void appendMap(Writer writer, Map<String, GradleDependencyNode> map, String baseIndentation) throws IOException {
+        String keyIndentation = baseIndentation + indentationSpace;
         boolean firstItem = true;
         writer.append("{").append(lineSeparator());
         for (Map.Entry<String, GradleDependencyNode> entry : map.entrySet()) {
