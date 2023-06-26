@@ -1,6 +1,8 @@
 package com.jfrog.tasks;
 
-import com.jfrog.GradleDependencyTree;
+import com.jfrog.GradleDepTreeResults;
+import com.jfrog.GradleDependencyNode;
+import com.jfrog.Utils;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
@@ -15,13 +17,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static com.jfrog.GradleDependencyTreeUtils.addConfiguration;
-import static com.jfrog.Utils.toJsonString;
 
 /**
  * Represents the generateDepTrees Gradle task.
@@ -89,9 +87,9 @@ public class GenerateDepTrees extends DefaultTask {
     void generateDepTrees() throws IOException {
         createOutputDir();
         for (Project project : getRelatedProjects()) {
-            GradleDependencyTree dependencyTree = createProjectDependencyTree(project);
+            GradleDepTreeResults results = createProjectDependencyTree(project);
             // Write output to file
-            Files.write(getProjectOutputFile(project).toPath(), toJsonString(dependencyTree).getBytes(StandardCharsets.UTF_8));
+            Utils.saveToFileAsJson(getProjectOutputFile(project), results);
         }
     }
 
@@ -121,7 +119,7 @@ public class GenerateDepTrees extends DefaultTask {
      * - The current running project.
      * - Subprojects that don't contain build.gradle file - this is needed to allow running this task concurrently on
      * build.gradle files. The user should be allowed to run "gradle generateDepTrees" on each one of the
-     * build.gradle files in his/here project.
+     * build.gradle files in his/her project.
      *
      * @return list of related projects.
      */
@@ -130,7 +128,7 @@ public class GenerateDepTrees extends DefaultTask {
         relatedProjects.add(getProject());
         boolean includeAllBuildFiles = Boolean.parseBoolean(System.getProperty(INCLUDE_ALL_BUILD_FILES));
 
-        for (Project project : (Set<Project>) getProject().getSubprojects()) {
+        for (Project project : getProject().getSubprojects()) {
             if (includeAllBuildFiles || !project.getBuildFile().exists()) {
                 relatedProjects.add(project);
             }
@@ -163,13 +161,25 @@ public class GenerateDepTrees extends DefaultTask {
      * Generate the dependency tree for all project's configurations.
      *
      * @param project - The Gradle project
-     * @return dependency tree for all project's configurations.
+     * @return a result object containing the root of the tree, the nodes and the relations between them.
      */
-    private GradleDependencyTree createProjectDependencyTree(Project project) {
-        GradleDependencyTree results = new GradleDependencyTree();
+    private GradleDepTreeResults createProjectDependencyTree(Project project) {
+        String rootId = getProjectModuleId(project);
+        GradleDependencyNode root = new GradleDependencyNode();
+        Map<String, GradleDependencyNode> nodes = new HashMap<>();
+        nodes.put(rootId, root);
+
         for (Configuration configuration : project.getConfigurations()) {
-            addConfiguration(results, configuration);
+            addConfiguration(root, configuration, nodes);
         }
-        return results;
+        return new GradleDepTreeResults(rootId, nodes);
+    }
+
+    private String getProjectModuleId(Project project) {
+        final String unspecifiedIdPart = "unspecified";
+        String group = project.getGroup().toString().isEmpty() ? unspecifiedIdPart : project.getGroup().toString();
+        String name = project.getName().isEmpty() ? unspecifiedIdPart : project.getName();
+        String version = project.getVersion().toString().isEmpty() ? unspecifiedIdPart : project.getVersion().toString();
+        return String.join(":", group, name, version);
     }
 }

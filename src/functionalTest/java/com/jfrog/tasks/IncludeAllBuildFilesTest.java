@@ -1,6 +1,6 @@
 package com.jfrog.tasks;
 
-import com.jfrog.GradleDependencyTree;
+import com.jfrog.GradleDepTreeResults;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -17,7 +17,8 @@ import java.util.stream.Stream;
 import static com.jfrog.tasks.Consts.MULTI;
 import static com.jfrog.tasks.Consts.TEST_DIR;
 import static com.jfrog.tasks.Utils.*;
-import static org.testng.Assert.*;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.fail;
 
 /**
  * Functional tests for the project under resources/multi/
@@ -40,22 +41,22 @@ public class IncludeAllBuildFilesTest extends FunctionalTestBase {
             Set<String> actualProjects = files.map(Path::getFileName).map(Path::toString).collect(Collectors.toSet());
             assertEquals(actualProjects.size(), 5);
             for (String actualProject : actualProjects) {
-                GradleDependencyTree dependencyTree = objectMapper.readValue(outputDir.resolve(actualProject).toFile(), GradleDependencyTree.class);
+                GradleDepTreeResults results = objectMapper.readValue(outputDir.resolve(actualProject).toFile(), GradleDepTreeResults.class);
                 String projectName = new String(Base64.getDecoder().decode(actualProject), StandardCharsets.UTF_8);
                 switch (projectName) {
                     case "shared":
-                        assertEquals(dependencyTree.getChildren().size(), 1);
-                        assertChild(dependencyTree, "junit:junit:4.7", "testImplementation", false);
+                        assertRootChildrenCount(results, 1);
+                        assertDirectChild(results, "junit:junit:4.7", "testImplementation", false);
                         break;
                     case "services":
                     case "functional-test-project":
-                        assertTrue(dependencyTree.getChildren().isEmpty());
+                        assertRootChildrenCount(results, 0);
                         break;
                     case "api":
-                        assertEquals(dependencyTree.getChildren().size(), 4);
+                        assertRootChildrenCount(results, 4);
                         break;
                     case "webservice":
-                        assertEquals(dependencyTree.getChildren().size(), 7);
+                        assertRootChildrenCount(results, 7);
                         break;
                     default:
                         fail("Unexpected project " + projectName);

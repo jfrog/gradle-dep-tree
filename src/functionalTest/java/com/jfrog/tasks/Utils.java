@@ -1,7 +1,8 @@
 package com.jfrog.tasks;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jfrog.GradleDependencyTree;
+import com.jfrog.GradleDepTreeResults;
+import com.jfrog.GradleDependencyNode;
 import org.apache.commons.io.FileUtils;
 import org.gradle.testkit.runner.BuildResult;
 import org.gradle.testkit.runner.BuildTask;
@@ -85,17 +86,23 @@ public class Utils {
     }
 
     /**
-     * Assert a child in the given dependency tree.
+     * Assert a direct child of the root in the results.
      *
-     * @param dependencyTree - The dependency tree
-     * @param childName      - The child name
-     * @param configuration  - A configuration name to check
+     * @param results       - The tree results object
+     * @param childName     - The child name
+     * @param configuration - A configuration name to check
+     * @param unresolved    - True if the child is expected to be unresolved, false otherwise
      */
-    static void assertChild(GradleDependencyTree dependencyTree, String childName, String configuration, boolean unresolved) {
-        GradleDependencyTree child = dependencyTree.getChildren().get(childName);
+    static void assertDirectChild(GradleDepTreeResults results, String childName, String configuration, boolean unresolved) {
+        assertTrue(results.getNodes().get(results.getRoot()).getChildren().contains(childName));
+        GradleDependencyNode child = results.getNodes().get(childName);
         assertNotNull(child);
         assertEquals(child.isUnresolved(), unresolved);
         assertTrue(child.getConfigurations().contains(configuration));
+    }
+
+    static void assertRootChildrenCount(GradleDepTreeResults results, int expectedChildrenCount) {
+        assertEquals(results.getNodes().get(results.getRoot()).getChildren().size(), expectedChildrenCount);
     }
 
     /**

@@ -1,6 +1,6 @@
 package com.jfrog.tasks;
 
-import com.jfrog.GradleDependencyTree;
+import com.jfrog.GradleDepTreeResults;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -38,10 +38,10 @@ public class BasicProjectTest extends FunctionalTestBase {
             Set<String> actualProjects = files.map(Path::getFileName).map(Path::toString).collect(Collectors.toSet());
             assertEquals(1, actualProjects.size());
             for (String actualProject : actualProjects) {
-                GradleDependencyTree dependencyTree = objectMapper.readValue(outputDir.resolve(actualProject).toFile(), GradleDependencyTree.class);
-                assertChild(dependencyTree, "junit:junit:4.12", "testImplementation", false);
-                assertChild(dependencyTree, "joda-time:joda-time:2.2", "implementation", false);
-                assertChild(dependencyTree, "missing:dependency:404", "testImplementation", true);
+                GradleDepTreeResults results = objectMapper.readValue(outputDir.resolve(actualProject).toFile(), GradleDepTreeResults.class);
+                assertDirectChild(results, "junit:junit:4.12", "testImplementation", false);
+                assertDirectChild(results, "joda-time:joda-time:2.2", "implementation", false);
+                assertDirectChild(results, "missing:dependency:404", "testImplementation", true);
             }
         }
     }

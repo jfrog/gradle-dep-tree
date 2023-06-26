@@ -1,6 +1,6 @@
 package com.jfrog.tasks;
 
-import com.jfrog.GradleDependencyTree;
+import com.jfrog.GradleDepTreeResults;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -14,10 +14,8 @@ import java.util.stream.Stream;
 
 import static com.jfrog.tasks.Consts.EMPTY;
 import static com.jfrog.tasks.Consts.TEST_DIR;
-import static com.jfrog.tasks.Utils.generateDepTrees;
-import static com.jfrog.tasks.Utils.objectMapper;
+import static com.jfrog.tasks.Utils.*;
 import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertTrue;
 
 /**
  * Functional tests for the project under resources/empty/
@@ -40,8 +38,8 @@ public class EmptyProjectTest extends FunctionalTestBase {
             Set<String> actualProjects = files.map(Path::getFileName).map(Path::toString).collect(Collectors.toSet());
             assertEquals(1, actualProjects.size());
             for (String actualProject : actualProjects) {
-                GradleDependencyTree dependencyTree = objectMapper.readValue(outputDir.resolve(actualProject).toFile(), GradleDependencyTree.class);
-                assertTrue(dependencyTree.getChildren().isEmpty());
+                GradleDepTreeResults results = objectMapper.readValue(outputDir.resolve(actualProject).toFile(), GradleDepTreeResults.class);
+                assertRootChildrenCount(results, 0);
             }
         }
     }

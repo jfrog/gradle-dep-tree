@@ -1,6 +1,6 @@
 package com.jfrog.tasks;
 
-import com.jfrog.GradleDependencyTree;
+import com.jfrog.GradleDepTreeResults;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -40,23 +40,23 @@ public class OneBuildFileTest extends FunctionalTestBase {
             Set<String> actualProjects = files.map(Path::getFileName).map(Path::toString).collect(Collectors.toSet());
             assertEquals(actualProjects.size(), 5);
             for (String actualProject : actualProjects) {
-                GradleDependencyTree dependencyTree = objectMapper.readValue(outputDir.resolve(actualProject).toFile(), GradleDependencyTree.class);
+                GradleDepTreeResults results = objectMapper.readValue(outputDir.resolve(actualProject).toFile(), GradleDepTreeResults.class);
                 String projectName = new String(Base64.getDecoder().decode(actualProject), StandardCharsets.UTF_8);
                 switch (projectName) {
                     case "shared":
-                        assertEquals(dependencyTree.getChildren().size(), 1);
-                        assertChild(dependencyTree, "junit:junit:4.7", "testImplementation", false);
+                        assertRootChildrenCount(results, 1);
+                        assertDirectChild(results, "junit:junit:4.7", "testImplementation", false);
                         break;
                     case "api":
                     case "webservice":
-                        assertTrue(dependencyTree.getChildren().size() > 3);
-                        assertChild(dependencyTree, "junit:junit:4.7", "testImplementation", false);
-                        assertChild(dependencyTree, "commons-lang:commons-lang:2.4", "implementation", false);
-                        assertChild(dependencyTree, "org.jfrog.test.gradle.publish:shared:1.0-SNAPSHOT", "implementation", false);
+                        assertTrue(results.getNodes().get(results.getRoot()).getChildren().size() > 3);
+                        assertDirectChild(results, "junit:junit:4.7", "testImplementation", false);
+                        assertDirectChild(results, "commons-lang:commons-lang:2.4", "implementation", false);
+                        assertDirectChild(results, "org.jfrog.test.gradle.publish:shared:1.0-SNAPSHOT", "implementation", false);
                         break;
                     case "services":
                     case "functional-test-project":
-                        assertTrue(dependencyTree.getChildren().isEmpty());
+                        assertRootChildrenCount(results, 0);
                         break;
                     default:
                         fail("Unexpected project " + projectName);
