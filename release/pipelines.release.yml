@@ -63,6 +63,7 @@ pipelines:
               JFROG_CLI_BUILD_NAME=$JFROG_CLI_BUILD_NAME
               JFROG_CLI_BUILD_NUMBER=$JFROG_CLI_BUILD_NUMBER
               JFROG_CLI_BUILD_PROJECT=$JFROG_CLI_BUILD_PROJECT
+              int_mvn_central_signingKey=$int_mvn_central_signingKey
               ORG_GRADLE_PROJECT_signingKey=$(echo $int_mvn_central_signingKey | base64 -d)
               ORG_GRADLE_PROJECT_signingPassword=$int_mvn_central_signingPassword
               jf gradle clean build artifactoryPublish -x test -x functionalTest -Psign
