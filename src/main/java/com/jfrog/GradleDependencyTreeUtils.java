@@ -8,6 +8,7 @@ import org.gradle.api.artifacts.result.ResolvedComponentResult;
 import org.gradle.api.artifacts.result.ResolvedDependencyResult;
 import org.gradle.api.artifacts.result.UnresolvedDependencyResult;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -19,6 +20,8 @@ import java.util.Set;
  * @author yahavi
  **/
 public class GradleDependencyTreeUtils {
+    // The maximum number of times a single dependency is populated, during the run of each configuration.
+    private static final int MAX_DEP_POPULATIONS_IN_CONFIG = 10;
 
     /**
      * Add Gradle configuration including its all dependencies.
@@ -45,8 +48,9 @@ public class GradleDependencyTreeUtils {
     private static void addResolvedConfiguration(GradleDependencyNode root, Configuration configuration, Map<String, GradleDependencyNode> nodes) {
         root.getConfigurations().add(configuration.getName());
         ResolvedComponentResult componentResult = configuration.getIncoming().getResolutionResult().getRoot();
+        Map<String, Integer> depPopulations = new HashMap<>();
         for (DependencyResult dependency : componentResult.getDependencies()) {
-            populateTree(root, configuration.getName(), dependency, new HashSet<>(), nodes);
+            populateTree(root, configuration.getName(), dependency, new HashSet<>(), nodes, depPopulations);
         }
     }
 
@@ -78,7 +82,7 @@ public class GradleDependencyTreeUtils {
      * @param addedChildren     - Set used to remove duplications to make sure there is no loop in the tree
      * @param nodes             - A map of all nodes mapped by their module ID (group:name:version)
      */
-    private static void populateTree(GradleDependencyNode node, String configurationName, DependencyResult dependency, Set<String> addedChildren, Map<String, GradleDependencyNode> nodes) {
+    private static void populateTree(GradleDependencyNode node, String configurationName, DependencyResult dependency, Set<String> addedChildren, Map<String, GradleDependencyNode> nodes, Map<String, Integer> depPopulations) {
         GradleDependencyNode child = new GradleDependencyNode(configurationName);
         if (dependency instanceof UnresolvedDependencyResult) {
             child.setUnresolved(true);
@@ -91,13 +95,18 @@ public class GradleDependencyTreeUtils {
             // If there is no module version, then the dependency was not found in any repository
             return;
         }
-        if (!addedChildren.add(moduleVersion.toString())) {
+        String nodeId = moduleVersion.toString();
+        if (!addedChildren.add(nodeId)) {
             return;
         }
-        for (DependencyResult dependencyResult : resolvedDependency.getSelected().getDependencies()) {
-            populateTree(child, configurationName, dependencyResult, new HashSet<>(addedChildren), nodes);
+        int populations = depPopulations.getOrDefault(nodeId, 0);
+        if (populations < MAX_DEP_POPULATIONS_IN_CONFIG) {
+            depPopulations.put(nodeId, populations + 1);
+            for (DependencyResult dependencyResult : resolvedDependency.getSelected().getDependencies()) {
+                populateTree(child, configurationName, dependencyResult, new HashSet<>(addedChildren), nodes, depPopulations);
+            }
         }
-        addChild(node, moduleVersion.toString(), child, nodes);
+        addChild(node, nodeId, child, nodes);
     }
 
     /**
