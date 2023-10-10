@@ -8,6 +8,7 @@ import org.gradle.api.artifacts.result.ResolvedComponentResult;
 import org.gradle.api.artifacts.result.ResolvedDependencyResult;
 import org.gradle.api.artifacts.result.UnresolvedDependencyResult;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -19,13 +20,15 @@ import java.util.Set;
  * @author yahavi
  **/
 public class GradleDependencyTreeUtils {
+    // The maximum number of times a single dependency is populated, during the run of each configuration.
+    private static final int MAX_DEP_POPULATIONS_IN_CONFIG = 10;
 
     /**
      * Add Gradle configuration including its all dependencies.
      *
-     * @param root          - The root node
-     * @param configuration - Resolved or unresolved Gradle configuration
-     * @param nodes         - A map of all nodes mapped by their module ID (group:name:version)
+     * @param root          the root node
+     * @param configuration resolved or unresolved Gradle configuration
+     * @param nodes         a map of all nodes mapped by their module ID (group:name:version)
      */
     public static void addConfiguration(GradleDependencyNode root, Configuration configuration, Map<String, GradleDependencyNode> nodes) {
         if (configuration.isCanBeResolved()) {
@@ -38,24 +41,25 @@ public class GradleDependencyTreeUtils {
     /**
      * Add resolved configuration. A resolved configuration may contain transitive dependencies.
      *
-     * @param root          - The root node
-     * @param configuration - Resolved Gradle configuration
-     * @param nodes         - A map of all nodes mapped by their module ID (group:name:version)
+     * @param root          the root node
+     * @param configuration resolved Gradle configuration
+     * @param nodes         a map of all nodes mapped by their module ID (group:name:version)
      */
     private static void addResolvedConfiguration(GradleDependencyNode root, Configuration configuration, Map<String, GradleDependencyNode> nodes) {
         root.getConfigurations().add(configuration.getName());
         ResolvedComponentResult componentResult = configuration.getIncoming().getResolutionResult().getRoot();
+        Map<String, Integer> depPopulations = new HashMap<>();
         for (DependencyResult dependency : componentResult.getDependencies()) {
-            populateTree(root, configuration.getName(), dependency, new HashSet<>(), nodes);
+            populateTree(root, configuration.getName(), dependency, new HashSet<>(), nodes, depPopulations);
         }
     }
 
     /**
      * Add unresolved configuration. An unresolved configuration can contain only direct dependencies.
      *
-     * @param root          - The parent node
-     * @param configuration - Unresolved Gradle configuration
-     * @param nodes         - A map of all nodes mapped by their module ID (group:name:version)
+     * @param root          the parent node
+     * @param configuration unresolved Gradle configuration
+     * @param nodes         a map of all nodes mapped by their module ID (group:name:version)
      */
     private static void addUnresolvedConfiguration(GradleDependencyNode root, Configuration configuration, Map<String, GradleDependencyNode> nodes) {
         for (Dependency dependency : configuration.getDependencies()) {
@@ -72,13 +76,14 @@ public class GradleDependencyTreeUtils {
     /**
      * Recursively populate the dependency tree.
      *
-     * @param node              - The parent node
-     * @param configurationName - The configuration name
-     * @param dependency        - Resolved or unresolved dependency
-     * @param addedChildren     - Set used to remove duplications to make sure there is no loop in the tree
-     * @param nodes             - A map of all nodes mapped by their module ID (group:name:version)
+     * @param node              the parent node
+     * @param configurationName the configuration name
+     * @param dependency        resolved or unresolved dependency
+     * @param addedChildren     a set used to remove duplications to make sure there is no loop in the tree
+     * @param nodes             a map of all nodes mapped by their module ID (group:name:version)
+     * @param depPopulations    a map of all node population counters mapped by their module ID (group:name:version)
      */
-    private static void populateTree(GradleDependencyNode node, String configurationName, DependencyResult dependency, Set<String> addedChildren, Map<String, GradleDependencyNode> nodes) {
+    private static void populateTree(GradleDependencyNode node, String configurationName, DependencyResult dependency, Set<String> addedChildren, Map<String, GradleDependencyNode> nodes, Map<String, Integer> depPopulations) {
         GradleDependencyNode child = new GradleDependencyNode(configurationName);
         if (dependency instanceof UnresolvedDependencyResult) {
             child.setUnresolved(true);
@@ -91,22 +96,25 @@ public class GradleDependencyTreeUtils {
             // If there is no module version, then the dependency was not found in any repository
             return;
         }
-        if (!addedChildren.add(moduleVersion.toString())) {
+        String nodeId = moduleVersion.toString();
+        int populations = depPopulations.getOrDefault(nodeId, 0);
+        if (!addedChildren.add(nodeId) || populations >= MAX_DEP_POPULATIONS_IN_CONFIG) {
             return;
         }
+        depPopulations.put(nodeId, populations + 1);
         for (DependencyResult dependencyResult : resolvedDependency.getSelected().getDependencies()) {
-            populateTree(child, configurationName, dependencyResult, new HashSet<>(addedChildren), nodes);
+            populateTree(child, configurationName, dependencyResult, new HashSet<>(addedChildren), nodes, depPopulations);
         }
-        addChild(node, moduleVersion.toString(), child, nodes);
+        addChild(node, nodeId, child, nodes);
     }
 
     /**
      * Add a child to the dependency tree.
      *
-     * @param parent     - The parent node
-     * @param childId    - The child ID
-     * @param childToAdd - The child node
-     * @param nodes      - A map of all nodes mapped by their module ID (group:name:version)
+     * @param parent     the parent node
+     * @param childId    the child ID
+     * @param childToAdd the child node
+     * @param nodes      a map of all nodes mapped by their module ID (group:name:version)
      */
     static void addChild(GradleDependencyNode parent, String childId, GradleDependencyNode childToAdd, Map<String, GradleDependencyNode> nodes) {
         GradleDependencyNode child = nodes.get(childId);
