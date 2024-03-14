@@ -46,3 +46,14 @@ On Windows run:
 ```
 gradlew.bat clean check
 ```
+
+# 🐞 Debug
+
+To debug the gradle-dep-tree process, follow these steps:
+1) Create a new debug configuration in your IDE. If you are using IntelliJ IDEA Choose "Remote JVM Debug" and ensure the following fields are correctly configured:
+   * Debugger Mode: Attach to remote JVM
+   * Host: localhost
+   * Post: 5005
+   * Use module classpath: <no module>
+2) Run the Gradle command with following flags: `-Dorg.gradle.debug=true --no-daemon`
+3) After executing the command with the flags, the process will pause. At this juncture, you can set a breakpoint and initiate the debug configuration in "Debug" mode.
