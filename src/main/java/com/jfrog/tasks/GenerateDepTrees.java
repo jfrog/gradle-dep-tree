@@ -169,7 +169,8 @@ public class GenerateDepTrees extends DefaultTask {
         Map<String, GradleDependencyNode> nodes = new HashMap<>();
         nodes.put(rootId, root);
 
-        // getConfigurations() may throw java.util.ConcurrentModificationException in loop
+        // To prevent ConcurrentModificationException, we clone the configuration names before iterating over them.
+        // This avoids issues caused by dynamic modifications by other Gradle plugins.
         ConfigurationContainer configsContainer = project.getConfigurations();
         Set<String> names = configsContainer.getNames();
         for (String name : names) {
