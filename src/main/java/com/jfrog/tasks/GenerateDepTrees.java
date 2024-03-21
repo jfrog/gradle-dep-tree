@@ -6,7 +6,7 @@ import com.jfrog.Utils;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
-import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.ConfigurationContainer;
 import org.gradle.api.tasks.*;
 
 import javax.annotation.Nonnull;
@@ -169,8 +169,12 @@ public class GenerateDepTrees extends DefaultTask {
         Map<String, GradleDependencyNode> nodes = new HashMap<>();
         nodes.put(rootId, root);
 
-        for (Configuration configuration : project.getConfigurations()) {
-            addConfiguration(root, configuration, nodes);
+        // To prevent ConcurrentModificationException, we clone the configuration names before iterating over them.
+        // This avoids issues caused by dynamic modifications by other Gradle plugins.
+        ConfigurationContainer configsContainer = project.getConfigurations();
+        Set<String> names = configsContainer.getNames();
+        for (String name : names) {
+            addConfiguration(root, configsContainer.getByName(name), nodes);
         }
         return new GradleDepTreeResults(rootId, nodes);
     }
