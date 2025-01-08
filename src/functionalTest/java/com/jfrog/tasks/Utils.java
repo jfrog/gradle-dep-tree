@@ -169,7 +169,7 @@ public class Utils {
                 .withGradleVersion(gradleVersion)
                 .withProjectDir(projectDir)
                 .withPluginClasspath()
-                .withDebug(true)
+                .withEnvironment()
                 .withArguments("generateDepTrees", "-q", "-D" + INCLUDE_ALL_BUILD_FILES + "=" + includeAllBuildFiles, "-D" + OUTPUT_FILE_PROPERTY + "=" + outputFile.toAbsolutePath())
                 .build();
     }
