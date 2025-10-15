@@ -31,6 +31,7 @@ public class GenerateDepTrees extends DefaultTask {
     public static final String OUTPUT_FILE_PROPERTY = "com.jfrog.depsTreeOutputFile";
     public static final String TASK_NAME = "generateDepTrees";
     public static final String INCLUDE_ALL_BUILD_FILES = "com.jfrog.includeAllBuildFiles";
+    public static final String CURATION_AUDIT_MODE = "com.jfrog.curationAuditMode";
 
     private final Path pluginOutputDir = Paths.get(getProject().getRootProject().getBuildDir().getPath(), "gradle-dep-tree");
 
