@@ -7,9 +7,13 @@ import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.ConfigurationContainer;
+import org.gradle.api.internal.project.ProjectState;
 import org.gradle.api.tasks.*;
+import org.gradle.internal.build.BuildStateRegistry;
+import org.gradle.internal.build.IncludedBuildState;
 
 import javax.annotation.Nonnull;
+import javax.inject.Inject;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -32,6 +36,7 @@ public class GenerateDepTrees extends DefaultTask {
     public static final String TASK_NAME = "generateDepTrees";
     public static final String INCLUDE_ALL_BUILD_FILES = "com.jfrog.includeAllBuildFiles";
     public static final String CURATION_AUDIT_MODE = "com.jfrog.curationAuditMode";
+    public static final String INCLUDE_INCLUDED_BUILDS = "com.jfrog.includeIncludedBuilds";
 
     private final Path pluginOutputDir = Paths.get(getProject().getRootProject().getBuildDir().getPath(), "gradle-dep-tree");
 
@@ -44,6 +49,11 @@ public class GenerateDepTrees extends DefaultTask {
             }
             return true;
         });
+    }
+
+    @Inject
+    public BuildStateRegistry getBuildStateRegistry() {
+        throw new UnsupportedOperationException();
     }
 
     @Internal
@@ -125,16 +135,35 @@ public class GenerateDepTrees extends DefaultTask {
      * @return list of related projects.
      */
     private List<Project> getRelatedProjects() {
-        List<Project> relatedProjects = new ArrayList<>();
-        relatedProjects.add(getProject());
+        Map<String, Project> projectsMap = new HashMap<>();
+        Project rootProj = getProject();
+
+        projectsMap.put(rootProj.getPath(), rootProj);
         boolean includeAllBuildFiles = Boolean.parseBoolean(System.getProperty(INCLUDE_ALL_BUILD_FILES));
 
-        for (Project project : getProject().getSubprojects()) {
+        for (Project project : rootProj.getSubprojects()) {
             if (includeAllBuildFiles || !project.getBuildFile().exists()) {
-                relatedProjects.add(project);
+                projectsMap.put(project.getPath(), project);
             }
         }
-        return relatedProjects;
+
+        if (Boolean.parseBoolean(System.getProperty(INCLUDE_INCLUDED_BUILDS))) {
+            try {
+                for (IncludedBuildState b : getBuildStateRegistry().getIncludedBuilds()) {
+                    for (ProjectState ps : b.getProjects().getAllProjects()) {
+                        for (Project p : ps.getMutableModel().getAllprojects()) {
+                            projectsMap.put(p.getPath(), p);
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                // Don't fail the entire process
+                e.printStackTrace(System.err);
+            }
+
+        }
+
+        return new ArrayList<>(projectsMap.values());
     }
 
     /**
