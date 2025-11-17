@@ -27,6 +27,6 @@ public class FunctionalTestBase {
 
     @DataProvider
     public Object[][] gradleVersions() {
-        return new Object[][]{{"5.6.4"}, {"6.9"}, {"7.4.2"}, {"7.6"}};
+        return new Object[][]{{"5.6.4"}, {"6.9"}, {"7.4.2"}, {"7.6"}, {"8.14.2"}};
     }
 }
