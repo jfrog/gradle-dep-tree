@@ -22,6 +22,7 @@ import static org.testng.Assert.*;
 /**
  * Functional tests for the project under resources/multi/
  * This project contain subprojects in a multiple build.gradle files.
+ * It uses the configuration cache on Gradle 8.1+.
  *
  * @author yahavi
  **/

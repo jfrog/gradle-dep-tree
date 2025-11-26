@@ -24,6 +24,8 @@ import static org.testng.Assert.fail;
  * Functional tests for the project under resources/multi/
  * This project contain subprojects in a multiple build.gradle files.
  * This project tests the INCLUDE_ALL_BUILD_FILES flag, which should add all the subprojects under resources/multi/.
+ * It uses the configuration cache on Gradle 8.1+.
+ * 
  * @author omerz
  **/
 public class IncludeAllBuildFilesTest extends FunctionalTestBase {

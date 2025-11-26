@@ -22,6 +22,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.jfrog.GradleDependencyTreeUtils.addConfiguration;
 
@@ -49,6 +50,14 @@ public class GenerateDepTrees extends DefaultTask {
             }
             return true;
         });
+
+        // On Gradle 7.4+, mark this task as incompatible with the configuration cache
+        List<Integer> gradleVersionParts = Arrays.stream(getProject().getGradle().getGradleVersion().split("\\."))
+                .map(Integer::valueOf)
+                .collect(Collectors.toList());
+        if (gradleVersionParts.get(0) >= 8 || (gradleVersionParts.get(0) == 7 && gradleVersionParts.get(1) >= 4)) {
+            notCompatibleWithConfigurationCache("Accesses projects at execution time");
+        }
     }
 
     @Inject
