@@ -22,7 +22,7 @@ val functionalTest by sourceSets.creating
 dependencies {
     testImplementation("commons-io:commons-io:2.14.0")
     testImplementation("org.testng:testng:7.7.1")
-    "functionalTestImplementation"("com.fasterxml.jackson.core:jackson-databind:2.15.3")
+    "functionalTestImplementation"("com.fasterxml.jackson.core:jackson-databind:2.16.0")
     "functionalTestImplementation"("commons-io:commons-io:2.14.0")
     "functionalTestImplementation"("org.testng:testng:7.7.1")
     "functionalTestImplementation"(project)
