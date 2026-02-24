@@ -3,17 +3,17 @@ package com.jfrog;
 import com.jfrog.tasks.GenerateDepTrees;
 import org.gradle.api.Plugin;
 import org.gradle.api.artifacts.dsl.RepositoryHandler;
-import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
 import org.gradle.api.initialization.Settings;
 import org.gradle.api.invocation.Gradle;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 
 @SuppressWarnings("unused")
 public class GradleDepTreeSettings implements Plugin<Gradle> {
 
-    private static final String ARTIFACTORY_PATH = "/artifactory/";
-    private static final String CURATION_AUDIT_PATH = "/api/curation/audit";
+    private static final Logger logger = LoggerFactory.getLogger(GradleDepTreeSettings.class);
 
     @Override
     public void apply(@Nonnull Gradle gradle) {
@@ -32,8 +32,9 @@ public class GradleDepTreeSettings implements Plugin<Gradle> {
     private void rewritePluginManagementRepos(Settings settings) {
         try {
             RepositoryHandler repos = settings.getPluginManagement().getRepositories();
-            updateRepositoryUrls(repos);
-        } catch (Exception ignored) {
+            CurationUtils.updateRepositoryUrls(repos);
+        } catch (Exception e) {
+            logger.warn("Failed to rewrite pluginManagement repository URLs for curation audit: {}", e.getMessage());
         }
     }
 
@@ -46,21 +47,10 @@ public class GradleDepTreeSettings implements Plugin<Gradle> {
                 RepositoryHandler repos = (RepositoryHandler) depResMgmt.getClass()
                         .getMethod("getRepositories")
                         .invoke(depResMgmt);
-                updateRepositoryUrls(repos);
+                CurationUtils.updateRepositoryUrls(repos);
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            logger.warn("Failed to rewrite dependencyResolutionManagement repository URLs for curation audit: {}", e.getMessage());
         }
-    }
-
-    static void updateRepositoryUrls(RepositoryHandler repositories) {
-        repositories.all(repo -> {
-            if (repo instanceof MavenArtifactRepository) {
-                MavenArtifactRepository mavenRepo = (MavenArtifactRepository) repo;
-                String currentUrl = mavenRepo.getUrl().toString();
-                if (currentUrl.contains(ARTIFACTORY_PATH) && !currentUrl.contains(CURATION_AUDIT_PATH)) {
-                    mavenRepo.setUrl(currentUrl.replace(ARTIFACTORY_PATH, ARTIFACTORY_PATH + "api/curation/audit/"));
-                }
-            }
-        });
     }
 }
