@@ -40,6 +40,7 @@ public class GradleDepTreeSettings implements Plugin<Gradle> {
 
     private void rewriteDependencyResolutionManagementRepos(Settings settings) {
         try {
+            // The reflection-based access to `getDependencyResolutionManagement()` is intentional for backward compatibility with Gradle < 6.8
             Object depResMgmt = settings.getClass()
                     .getMethod("getDependencyResolutionManagement")
                     .invoke(settings);
