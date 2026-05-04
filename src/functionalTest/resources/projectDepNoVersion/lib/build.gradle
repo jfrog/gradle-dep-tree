@@ -1,0 +1,6 @@
+// :lib is the deepest module — it owns the leaf external dep that should
+// surface all the way up to :app's tree if the project-dep chain is walked
+// correctly.
+dependencies {
+    api 'commons-io:commons-io:2.14.0'
+}

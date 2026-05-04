@@ -1,0 +1,23 @@
+// Happy-path smoke test: multi-module chain (:app -> :middle -> :lib -> external)
+// where no subproject declares `group` or `version`. Ensures the new project-dep
+// node-id resolution does not regress the common case across all supported Gradle
+// versions. Strict regression coverage for the null-moduleVersion path is in the
+// Mockito unit test (see ProjectDepNoVersionTest's class javadoc).
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+}
+
+plugins {
+    id 'com.jfrog.gradle-dep-tree'
+}
+
+subprojects {
+    apply plugin: 'java-library'
+
+    repositories {
+        mavenCentral()
+    }
+}
