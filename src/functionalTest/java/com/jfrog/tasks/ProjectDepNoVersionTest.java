@@ -26,25 +26,13 @@ import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertTrue;
 
 /**
- * Happy-path smoke test for the project under {@code resources/projectDepNoVersion/}.
+ * Happy-path smoke test for a 3-module chain ({@code :app -> :middle -> :lib -> commons-io},
+ * also {@code :middle -> commons-lang}) where no subproject declares {@code group}/{@code version}.
  * <p>
- * Shaped to mirror the customer scenario that surfaced the {@code populateTree} bug:
- * a 3-module chain where no subproject declares {@code group} or {@code version}:
- * <pre>
- *   :app -> :middle -> :lib -> commons-io:commons-io:2.14.0
- *                  \-> commons-lang:commons-lang:2.4
- * </pre>
- * <p>
- * <b>Important:</b> stock Gradle (5.6.4 — 8.14.2) always assigns project deps a synthetic
- * non-null {@link org.gradle.api.artifacts.ModuleVersionIdentifier} of the form
- * {@code <rootProjectName>:<subproject>:unspecified}, so this fixture does <em>not</em>
- * trigger the null-moduleVersion early-return that the bug fix targets. Strict regression
- * coverage for the null-moduleVersion path lives in the Mockito-driven unit test
- * {@code GradleDependencyTreeUtilsTest#testAddConfiguration_chainOfProjectDepsWithoutModuleVersion_preservesTransitives}.
- * <p>
- * What this test <em>does</em> guarantee: the fix introduces no regression on a normal
- * happy-path multi-module project across all five supported Gradle versions — the chain
- * still resolves end-to-end and both transitive externals appear in {@code :app}'s tree.
+ * Stock Gradle (5.6.4 — 8.14.2) synthesises a non-null {@code ModuleVersionIdentifier} for
+ * project deps, so this fixture does <em>not</em> trigger the null-moduleVersion path —
+ * strict coverage of that path lives in {@code GradleDependencyTreeUtilsTest}. This test
+ * just asserts the fix doesn't regress the happy path across all supported Gradle versions.
  *
  * @author jfrog
  **/
@@ -60,11 +48,9 @@ public class ProjectDepNoVersionTest extends FunctionalTestBase {
 
     @Test(dataProvider = "gradleVersions")
     public void testMultiModuleChainWithoutGroupAndVersion_remainsHappyPath(String gradleVersion) throws IOException {
-        // Run from the :app sub-project. :app has its own build.gradle, so with
-        // includeAllBuildFiles=false getRelatedProjects() returns only :app -- that's
-        // exactly what we want: a single tree file containing the entire chain.
-        // The plugin always writes its output to the *root project's* build dir, so the
-        // output lives at <root>/build/gradle-dep-tree/, not <root>/app/build/...
+        // Run from :app — with includeAllBuildFiles=false, getRelatedProjects() returns only
+        // :app, so we get a single tree file with the whole chain. Output goes to the root
+        // project's build dir (<root>/build/gradle-dep-tree/), not <root>/app/build/.
         generateDepTrees(gradleVersion, false, Paths.get("app"));
         Path outputDir = TEST_DIR.toPath().resolve("build").resolve("gradle-dep-tree");
 
@@ -78,19 +64,12 @@ public class ProjectDepNoVersionTest extends FunctionalTestBase {
             GradleDependencyNode root = nodes.get(results.getRoot());
             assertNotNull(root, "Root node missing from tree");
 
-            // Both transitive externals must survive in :app's tree across all supported
-            // Gradle versions. This proves the post-fix code path stays well-behaved on
-            // the happy path; the null-moduleVersion regression itself is covered by the
-            // Mockito-driven unit test (see class javadoc).
             assertNodePresentAndReachable(nodes, root, COMMONS_LANG_ID,
                     "chain :app -> :middle -> commons-lang");
             assertNodePresentAndReachable(nodes, root, COMMONS_IO_ID,
                     "chain :app -> :middle -> :lib -> commons-io");
 
-            // Sanity: each surfaced external must carry at least one configuration label
-            // (the resolvable configuration through which it was reached, e.g.
-            // 'compileClasspath'). The exact configuration set varies across Gradle
-            // versions, so we don't assert the specific name.
+            // Each surfaced external must carry at least one config label; exact name varies by Gradle version.
             assertTrue(!nodes.get(COMMONS_IO_ID).getConfigurations().isEmpty(),
                     COMMONS_IO_ID + " must carry at least one configuration");
             assertTrue(!nodes.get(COMMONS_LANG_ID).getConfigurations().isEmpty(),
@@ -111,11 +90,7 @@ public class ProjectDepNoVersionTest extends FunctionalTestBase {
                         + "(" + chainDescription + " is broken).");
     }
 
-    /**
-     * BFS from {@code from} over the {@code children} relation, returning {@code true} if
-     * {@code targetId} is reached. {@code visited} guards against cycles, though the
-     * produced tree should not contain any for this fixture.
-     */
+    /** BFS over children; visited guards against cycles. */
     private static boolean reachableFrom(GradleDependencyNode from, String targetId, Map<String, GradleDependencyNode> nodes) {
         Deque<String> stack = new ArrayDeque<>(from.getChildren());
         Set<String> visited = new HashSet<>();

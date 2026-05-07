@@ -1,7 +1,4 @@
-// :app declares NO direct external deps — it depends only on :middle.
-// If `populateTree` drops the project subtree on null moduleVersion,
-// :app's tree will lose visibility of every transitive below :middle
-// (including the externals declared in :middle and :lib).
+// :app has only a project dep — so all asserted externals reach it via the project-dep chain.
 dependencies {
     implementation project(':middle')
 }

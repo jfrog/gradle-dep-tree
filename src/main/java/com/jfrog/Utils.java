@@ -16,26 +16,15 @@ public class Utils {
     private static final String indentationSpace = "  ";
 
     /**
-     * Placeholder used in place of any missing component of a Gradle module id
-     * (group / name / version) when the underlying value is null or empty.
-     * Centralised so that all sites producing module ids stay in sync: both
-     * project root ids (see {@code GenerateDepTrees#getProjectModuleId}) and
-     * synthesized project-dep ids (see
-     * {@code GradleDependencyTreeUtils#synthesizeProjectNodeId}) must agree on
-     * this value, otherwise the dependency-tree files for sibling sub-projects
-     * will not merge correctly downstream.
+     * Placeholder for any missing component of a Gradle module id (group / name / version).
+     * All id-producing sites must agree on this value or per-subproject tree files won't
+     * merge correctly downstream.
      */
     public static final String UNSPECIFIED_ID_PART = "unspecified";
 
     /**
-     * Build a Gradle module id of the form {@code group:name:version}, replacing
-     * any null/empty component with {@link #UNSPECIFIED_ID_PART}. Use this from
-     * any code that produces a module id so the placeholder stays consistent.
-     *
-     * @param group   the group component (may be null/empty)
-     * @param name    the name component (may be null/empty)
-     * @param version the version component (may be null/empty)
-     * @return the joined id, never null
+     * Build a {@code group:name:version} module id, substituting {@link #UNSPECIFIED_ID_PART}
+     * for any null/empty component. Single source of truth for the placeholder format.
      */
     public static String buildModuleId(String group, String name, String version) {
         return String.join(":", orUnspecified(group), orUnspecified(name), orUnspecified(version));

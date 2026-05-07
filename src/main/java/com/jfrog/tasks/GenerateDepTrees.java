@@ -213,13 +213,8 @@ public class GenerateDepTrees extends DefaultTask {
         ConfigurationContainer configsContainer = project.getConfigurations();
         Set<String> names = new HashSet<>(configsContainer.getNames());
         for (String name : names) {
-            // Thread `project` through so GradleDependencyTreeUtils.synthesizeProjectNodeId can
-            // look up sibling subprojects when a project dep's ResolvedComponentResult returns
-            // a null ModuleVersionIdentifier — required for the synthesized id to match this
-            // class's getProjectModuleId(), without which per-subproject tree files won't
-            // merge correctly downstream (jf curation-audit reports a fraction of the real
-            // blocked-package signal). See Utils.UNSPECIFIED_ID_PART for the centralisation
-            // invariant the lookup enforces.
+            // Pass `project` so synthesizeProjectNodeId can resolve sibling subprojects
+            // (keeps synthesized ids aligned with getProjectModuleId).
             addConfiguration(project, root, configsContainer.getByName(name), nodes);
         }
         return new GradleDepTreeResults(rootId, nodes);

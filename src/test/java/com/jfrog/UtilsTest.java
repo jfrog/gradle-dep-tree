@@ -63,14 +63,9 @@ public class UtilsTest {
         assertEquals(actualOutput, expectedOutput);
     }
 
-    /**
-     * {@link Utils#buildModuleId} is the single source of truth for the
-     * {@code group:name:version} placeholder format used by both
-     * {@code GenerateDepTrees#getProjectModuleId} and
-     * {@code GradleDependencyTreeUtils#synthesizeProjectNodeId}. If these
-     * assertions ever change, both call sites need to be re-examined to keep
-     * downstream tree-merge logic consistent.
-     */
+    // buildModuleId is the single source of truth for the group:name:version placeholder
+    // format used by both GenerateDepTrees#getProjectModuleId and synthesizeProjectNodeId.
+
     @Test
     public void testBuildModuleId_allComponentsPresent() {
         assertEquals(buildModuleId("com.itextpdf", "kernel", "7.2.5"), "com.itextpdf:kernel:7.2.5");
@@ -103,7 +98,6 @@ public class UtilsTest {
 
     @Test
     public void testBuildModuleId_allNull_yieldsThreeUnspecifiedParts() {
-        // This is the value synthesizeProjectNodeId returns when the project path is null.
         assertEquals(buildModuleId(null, null, null),
                 String.join(":", UNSPECIFIED_ID_PART, UNSPECIFIED_ID_PART, UNSPECIFIED_ID_PART));
     }
@@ -114,13 +108,6 @@ public class UtilsTest {
                 String.join(":", UNSPECIFIED_ID_PART, UNSPECIFIED_ID_PART, UNSPECIFIED_ID_PART));
     }
 
-    /**
-     * Idempotence: passing {@code null} or {@code ""} for any part must produce the same id.
-     * If this ever drifts, sibling subprojects' tree files won't merge correctly downstream
-     * (the same subproject would be keyed differently depending on which API gave us the
-     * null-vs-empty value). The cross-site invariant proper — that the three id-producing
-     * call sites all agree — is locked down in {@code GradleDependencyTreeUtilsTest}.
-     */
     @Test
     public void testBuildModuleId_nullAndEmptyParts_areInterchangeable() {
         assertEquals(buildModuleId(null, "DummyService", null),
