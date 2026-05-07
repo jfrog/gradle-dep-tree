@@ -1,0 +1,6 @@
+// :middle bridges :app and :lib, plus its own external dep so the two chain
+// segments (:middle -> commons-lang vs :middle -> :lib -> commons-io) can be asserted separately.
+dependencies {
+    api project(':lib')
+    api 'commons-lang:commons-lang:2.4'
+}

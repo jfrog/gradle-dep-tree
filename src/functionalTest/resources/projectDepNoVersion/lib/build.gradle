@@ -1,0 +1,4 @@
+// :lib owns the leaf external dep that must surface in :app's tree if the chain is walked correctly.
+dependencies {
+    api 'commons-io:commons-io:2.14.0'
+}

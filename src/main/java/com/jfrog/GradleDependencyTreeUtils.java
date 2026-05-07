@@ -1,8 +1,11 @@
 package com.jfrog;
 
+import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.ModuleVersionIdentifier;
+import org.gradle.api.artifacts.component.ComponentIdentifier;
+import org.gradle.api.artifacts.component.ProjectComponentIdentifier;
 import org.gradle.api.artifacts.result.DependencyResult;
 import org.gradle.api.artifacts.result.ResolvedComponentResult;
 import org.gradle.api.artifacts.result.ResolvedDependencyResult;
@@ -26,13 +29,16 @@ public class GradleDependencyTreeUtils {
     /**
      * Add Gradle configuration including its all dependencies.
      *
+     * @param ownerProject  the project owning {@code configuration}, used to look up sibling
+     *                      subprojects when a project dep has no {@link ModuleVersionIdentifier};
+     *                      may be {@code null}
      * @param root          the root node
      * @param configuration resolved or unresolved Gradle configuration
      * @param nodes         a map of all nodes mapped by their module ID (group:name:version)
      */
-    public static void addConfiguration(GradleDependencyNode root, Configuration configuration, Map<String, GradleDependencyNode> nodes) {
+    public static void addConfiguration(Project ownerProject, GradleDependencyNode root, Configuration configuration, Map<String, GradleDependencyNode> nodes) {
         if (configuration.isCanBeResolved()) {
-            addResolvedConfiguration(root, configuration, nodes);
+            addResolvedConfiguration(ownerProject, root, configuration, nodes);
         } else {
             addUnresolvedConfiguration(root, configuration, nodes);
         }
@@ -40,17 +46,13 @@ public class GradleDependencyTreeUtils {
 
     /**
      * Add resolved configuration. A resolved configuration may contain transitive dependencies.
-     *
-     * @param root          the root node
-     * @param configuration resolved Gradle configuration
-     * @param nodes         a map of all nodes mapped by their module ID (group:name:version)
      */
-    private static void addResolvedConfiguration(GradleDependencyNode root, Configuration configuration, Map<String, GradleDependencyNode> nodes) {
+    private static void addResolvedConfiguration(Project ownerProject, GradleDependencyNode root, Configuration configuration, Map<String, GradleDependencyNode> nodes) {
         root.getConfigurations().add(configuration.getName());
         ResolvedComponentResult componentResult = configuration.getIncoming().getResolutionResult().getRoot();
         Map<String, Integer> depPopulations = new HashMap<>();
         for (DependencyResult dependency : componentResult.getDependencies()) {
-            populateTree(root, configuration.getName(), dependency, new HashSet<>(), nodes, depPopulations);
+            populateTree(ownerProject, root, configuration.getName(), dependency, new HashSet<>(), nodes, depPopulations);
         }
     }
 
@@ -66,9 +68,9 @@ public class GradleDependencyTreeUtils {
             GradleDependencyNode child = new GradleDependencyNode(configuration.getName());
             child.setUnresolved(true);
             if (dependency.getVersion() != null) {
-                // If the version is null, the dependency does not contain an ID and we should not add it.
-                // For example: "implementation gradleApi()"
-                addChild(root, String.join(":", dependency.getGroup(), dependency.getName(), dependency.getVersion()), child, nodes);
+                // Skip deps with no version (e.g. "implementation gradleApi()").
+                // Use buildModuleId so a null group becomes "unspecified" instead of the literal "null".
+                addChild(root, Utils.buildModuleId(dependency.getGroup(), dependency.getName(), dependency.getVersion()), child, nodes);
             }
         }
     }
@@ -76,6 +78,8 @@ public class GradleDependencyTreeUtils {
     /**
      * Recursively populate the dependency tree.
      *
+     * @param ownerProject      see {@link #addConfiguration} — passed unchanged through recursion
+     *                          so the project-dep synthesizer can look up sibling subprojects
      * @param node              the parent node
      * @param configurationName the configuration name
      * @param dependency        resolved or unresolved dependency
@@ -83,7 +87,7 @@ public class GradleDependencyTreeUtils {
      * @param nodes             a map of all nodes mapped by their module ID (group:name:version)
      * @param depPopulations    a map of all node population counters mapped by their module ID (group:name:version)
      */
-    private static void populateTree(GradleDependencyNode node, String configurationName, DependencyResult dependency, Set<String> addedChildren, Map<String, GradleDependencyNode> nodes, Map<String, Integer> depPopulations) {
+    private static void populateTree(Project ownerProject, GradleDependencyNode node, String configurationName, DependencyResult dependency, Set<String> addedChildren, Map<String, GradleDependencyNode> nodes, Map<String, Integer> depPopulations) {
         GradleDependencyNode child = new GradleDependencyNode(configurationName);
         if (dependency instanceof UnresolvedDependencyResult) {
             child.setUnresolved(true);
@@ -91,21 +95,72 @@ public class GradleDependencyTreeUtils {
             return;
         }
         ResolvedDependencyResult resolvedDependency = (ResolvedDependencyResult) dependency;
-        ModuleVersionIdentifier moduleVersion = resolvedDependency.getSelected().getModuleVersion();
-        if (moduleVersion == null) {
-            // If there is no module version, then the dependency was not found in any repository
+        ResolvedComponentResult selected = resolvedDependency.getSelected();
+        String nodeId = resolveNodeId(ownerProject, selected);
+        if (nodeId == null) {
+            // No usable identity (external dep not in any repo, or unsupported ComponentIdentifier subtype).
             return;
         }
-        String nodeId = moduleVersion.toString();
         int populations = depPopulations.getOrDefault(nodeId, 0);
         if (!addedChildren.add(nodeId) || populations >= MAX_DEP_POPULATIONS_IN_CONFIG) {
             return;
         }
         depPopulations.put(nodeId, populations + 1);
-        for (DependencyResult dependencyResult : resolvedDependency.getSelected().getDependencies()) {
-            populateTree(child, configurationName, dependencyResult, new HashSet<>(addedChildren), nodes, depPopulations);
+        for (DependencyResult dependencyResult : selected.getDependencies()) {
+            populateTree(ownerProject, child, configurationName, dependencyResult, new HashSet<>(addedChildren), nodes, depPopulations);
         }
         addChild(node, nodeId, child, nodes);
+    }
+
+    /**
+     * Resolve a stable node id for a resolved component.
+     * <p>
+     * External deps return {@link ModuleVersionIdentifier#toString()}. Local project deps
+     * whose {@code getModuleVersion()} is {@code null} (observed with recent JDKs + Gradle
+     * 8.14+ + plugins that rewrite resolution metadata, e.g. {@code io.spring.dependency-management})
+     * fall through to {@link #synthesizeProjectNodeId} instead of being dropped.
+     *
+     * @return the node id, or {@code null} if the component has no usable identity
+     */
+    static String resolveNodeId(Project ownerProject, ResolvedComponentResult selected) {
+        ModuleVersionIdentifier moduleVersion = selected.getModuleVersion();
+        if (moduleVersion != null) {
+            return moduleVersion.toString();
+        }
+        ComponentIdentifier id = selected.getId();
+        if (id instanceof ProjectComponentIdentifier) {
+            return synthesizeProjectNodeId(ownerProject, (ProjectComponentIdentifier) id);
+        }
+        return null;
+    }
+
+    /**
+     * Build a node id for a project component with no {@link ModuleVersionIdentifier}.
+     * The result MUST equal {@code GenerateDepTrees#getProjectModuleId}'s output for the
+     * same subproject, otherwise per-subproject tree files won't merge downstream.
+     * <p>
+     * If {@link Project#findProject(String)} resolves the path, use the subproject's actual
+     * {@code group}/{@code name}/{@code version}. Otherwise (cross-build refs, lookup miss)
+     * fall back to a path-based id with {@link Utils#UNSPECIFIED_ID_PART} placeholders —
+     * the chain survives, but the id won't merge cleanly with the child tree's root.
+     */
+    static String synthesizeProjectNodeId(Project ownerProject, ProjectComponentIdentifier id) {
+        String path = id.getProjectPath();
+        if (path == null) {
+            return Utils.buildModuleId(null, null, null);
+        }
+        if (ownerProject != null) {
+            Project subproject = ownerProject.findProject(path);
+            if (subproject != null) {
+                return Utils.buildModuleId(
+                        subproject.getGroup().toString(),
+                        subproject.getName(),
+                        subproject.getVersion().toString());
+            }
+        }
+        int lastColon = path.lastIndexOf(':');
+        String name = lastColon >= 0 ? path.substring(lastColon + 1) : path;
+        return Utils.buildModuleId(null, name, null);
     }
 
     /**

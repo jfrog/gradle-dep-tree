@@ -14,6 +14,8 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 
+import static com.jfrog.Utils.UNSPECIFIED_ID_PART;
+import static com.jfrog.Utils.buildModuleId;
 import static org.testng.Assert.assertEquals;
 
 /**
@@ -59,5 +61,56 @@ public class UtilsTest {
         String expectedOutput = FileUtils.readFileToString(RESOURCES_DIR.resolve("expectedDepTree.json").toFile(), StandardCharsets.UTF_8).trim();
         String actualOutput = FileUtils.readFileToString(outputFile, StandardCharsets.UTF_8).trim();
         assertEquals(actualOutput, expectedOutput);
+    }
+
+    // buildModuleId is the single source of truth for the group:name:version placeholder
+    // format used by both GenerateDepTrees#getProjectModuleId and synthesizeProjectNodeId.
+
+    @Test
+    public void testBuildModuleId_allComponentsPresent() {
+        assertEquals(buildModuleId("com.itextpdf", "kernel", "7.2.5"), "com.itextpdf:kernel:7.2.5");
+    }
+
+    @Test
+    public void testBuildModuleId_nullGroup_replacedWithUnspecified() {
+        assertEquals(buildModuleId(null, "lib", "1.0"), UNSPECIFIED_ID_PART + ":lib:1.0");
+    }
+
+    @Test
+    public void testBuildModuleId_emptyGroup_replacedWithUnspecified() {
+        assertEquals(buildModuleId("", "lib", "1.0"), UNSPECIFIED_ID_PART + ":lib:1.0");
+    }
+
+    @Test
+    public void testBuildModuleId_nullName_replacedWithUnspecified() {
+        assertEquals(buildModuleId("com.example", null, "1.0"), "com.example:" + UNSPECIFIED_ID_PART + ":1.0");
+    }
+
+    @Test
+    public void testBuildModuleId_nullVersion_replacedWithUnspecified() {
+        assertEquals(buildModuleId("com.example", "lib", null), "com.example:lib:" + UNSPECIFIED_ID_PART);
+    }
+
+    @Test
+    public void testBuildModuleId_emptyVersion_replacedWithUnspecified() {
+        assertEquals(buildModuleId("com.example", "lib", ""), "com.example:lib:" + UNSPECIFIED_ID_PART);
+    }
+
+    @Test
+    public void testBuildModuleId_allNull_yieldsThreeUnspecifiedParts() {
+        assertEquals(buildModuleId(null, null, null),
+                String.join(":", UNSPECIFIED_ID_PART, UNSPECIFIED_ID_PART, UNSPECIFIED_ID_PART));
+    }
+
+    @Test
+    public void testBuildModuleId_allEmpty_yieldsThreeUnspecifiedParts() {
+        assertEquals(buildModuleId("", "", ""),
+                String.join(":", UNSPECIFIED_ID_PART, UNSPECIFIED_ID_PART, UNSPECIFIED_ID_PART));
+    }
+
+    @Test
+    public void testBuildModuleId_nullAndEmptyParts_areInterchangeable() {
+        assertEquals(buildModuleId(null, "DummyService", null),
+                buildModuleId("", "DummyService", ""));
     }
 }

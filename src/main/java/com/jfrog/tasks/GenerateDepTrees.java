@@ -213,16 +213,17 @@ public class GenerateDepTrees extends DefaultTask {
         ConfigurationContainer configsContainer = project.getConfigurations();
         Set<String> names = new HashSet<>(configsContainer.getNames());
         for (String name : names) {
-            addConfiguration(root, configsContainer.getByName(name), nodes);
+            // Pass `project` so synthesizeProjectNodeId can resolve sibling subprojects
+            // (keeps synthesized ids aligned with getProjectModuleId).
+            addConfiguration(project, root, configsContainer.getByName(name), nodes);
         }
         return new GradleDepTreeResults(rootId, nodes);
     }
 
     private String getProjectModuleId(Project project) {
-        final String unspecifiedIdPart = "unspecified";
-        String group = project.getGroup().toString().isEmpty() ? unspecifiedIdPart : project.getGroup().toString();
-        String name = project.getName().isEmpty() ? unspecifiedIdPart : project.getName();
-        String version = project.getVersion().toString().isEmpty() ? unspecifiedIdPart : project.getVersion().toString();
-        return String.join(":", group, name, version);
+        return Utils.buildModuleId(
+                project.getGroup().toString(),
+                project.getName(),
+                project.getVersion().toString());
     }
 }

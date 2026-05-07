@@ -15,6 +15,25 @@ import static java.lang.System.lineSeparator;
 public class Utils {
     private static final String indentationSpace = "  ";
 
+    /**
+     * Placeholder for any missing component of a Gradle module id (group / name / version).
+     * All id-producing sites must agree on this value or per-subproject tree files won't
+     * merge correctly downstream.
+     */
+    public static final String UNSPECIFIED_ID_PART = "unspecified";
+
+    /**
+     * Build a {@code group:name:version} module id, substituting {@link #UNSPECIFIED_ID_PART}
+     * for any null/empty component. Single source of truth for the placeholder format.
+     */
+    public static String buildModuleId(String group, String name, String version) {
+        return String.join(":", orUnspecified(group), orUnspecified(name), orUnspecified(version));
+    }
+
+    private static String orUnspecified(String value) {
+        return value == null || value.isEmpty() ? UNSPECIFIED_ID_PART : value;
+    }
+
     public static void saveToFileAsJson(File outputFile, GradleDepTreeResults results) {
         try (FileWriter fileWriter = new FileWriter(outputFile);
              Writer writer = new BufferedWriter(fileWriter)) {

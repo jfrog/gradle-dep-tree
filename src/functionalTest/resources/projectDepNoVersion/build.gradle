@@ -1,0 +1,20 @@
+// Multi-module chain (:app -> :middle -> :lib -> external) with no group/version on subprojects.
+// Happy-path regression guard for the project-dep-without-module-version fix.
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+}
+
+plugins {
+    id 'com.jfrog.gradle-dep-tree'
+}
+
+subprojects {
+    apply plugin: 'java-library'
+
+    repositories {
+        mavenCentral()
+    }
+}

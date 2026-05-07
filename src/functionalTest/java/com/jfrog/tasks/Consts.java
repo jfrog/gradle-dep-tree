@@ -19,4 +19,6 @@ public class Consts {
     static final Path MULTI = PROJECTS_ROOT.resolve("multi");
     static final Path BASIC = PROJECTS_ROOT.resolve("basic");
     static final Path EMPTY = PROJECTS_ROOT.resolve("empty");
+    // Multi-project fixture for the project-dep-without-module-version regression.
+    static final Path PROJECT_DEP_NO_VERSION = PROJECTS_ROOT.resolve("projectDepNoVersion");
 }

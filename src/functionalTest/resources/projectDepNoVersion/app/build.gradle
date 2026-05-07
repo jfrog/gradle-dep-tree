@@ -1,0 +1,4 @@
+// :app has only a project dep — so all asserted externals reach it via the project-dep chain.
+dependencies {
+    implementation project(':middle')
+}
