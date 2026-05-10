@@ -78,7 +78,7 @@ public class GradleDependencyTreeUtils {
     /**
      * Recursively populate the dependency tree.
      *
-     * @param ownerProject      see {@link #addConfiguration} — passed unchanged through recursion
+     * @param ownerProject      see {@link #addConfiguration}; passed unchanged through recursion
      *                          so the project-dep synthesizer can look up sibling subprojects
      * @param node              the parent node
      * @param configurationName the configuration name
@@ -141,7 +141,7 @@ public class GradleDependencyTreeUtils {
      * <p>
      * If {@link Project#findProject(String)} resolves the path, use the subproject's actual
      * {@code group}/{@code name}/{@code version}. Otherwise (cross-build refs, lookup miss)
-     * fall back to a path-based id with {@link Utils#UNSPECIFIED_ID_PART} placeholders —
+     * fall back to a path-based id with {@link Utils#UNSPECIFIED_ID_PART} placeholders;
      * the chain survives, but the id won't merge cleanly with the child tree's root.
      */
     static String synthesizeProjectNodeId(Project ownerProject, ProjectComponentIdentifier id) {
