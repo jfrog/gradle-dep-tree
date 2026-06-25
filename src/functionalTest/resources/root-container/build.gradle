@@ -1,0 +1,9 @@
+plugins {
+    id 'com.jfrog.gradle-dep-tree'
+}
+
+allprojects {
+    group = 'eu.unicredit.qgu.qgu-calindi'
+    version = '2472_00'
+    repositories { mavenCentral() }
+}
