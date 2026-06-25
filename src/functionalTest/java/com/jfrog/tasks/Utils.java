@@ -39,6 +39,7 @@ public class Utils {
      * @throws IOException - In case of any IO error
      */
     static void createTestDir(Path sourceDir) throws IOException {
+        // jfrog-ignore: this is a test directory
         FileUtils.copyDirectory(sourceDir.toFile(), TEST_DIR);
     }
 
@@ -48,6 +49,7 @@ public class Utils {
      * @throws IOException - In case of any IO error
      */
     static void deleteTestDir() throws IOException {
+        // jfrog-ignore: this is a test directory
         FileUtils.deleteDirectory(TEST_DIR);
     }
 
@@ -75,6 +77,7 @@ public class Utils {
                 assertOutput(outputFile);
 
                 // Make a change in build.gradle file and make sure the cache was invalidated after running generateDepTrees
+                // jfrog-ignore: this is a test
                 Files.write(projectDir.toPath().resolve("build.gradle"), "\n".getBytes(), StandardOpenOption.APPEND);
                 result = runGenerateDepTrees(gradleVersion, projectDir, outputFile, includeAllBuildFiles);
                 assertSuccess(result);

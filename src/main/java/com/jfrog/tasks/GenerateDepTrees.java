@@ -14,8 +14,8 @@ import org.gradle.internal.build.IncludedBuildState;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
+import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -120,21 +120,42 @@ public class GenerateDepTrees extends DefaultTask {
     }
 
     private void writeDepTreeSummary() {
-        String outputFile = System.getProperty(OUTPUT_FILE_PROPERTY);
-        if (outputFile == null) {
+        String outputFilePath = System.getProperty(OUTPUT_FILE_PROPERTY);
+        if (outputFilePath == null) {
             return;
         }
         List<File> writtenFiles = listExistingOutputFiles();
         if (writtenFiles.isEmpty()) {
             throw new GradleException("generateDepTrees produced no output files under " + pluginOutputDir);
         }
-        try (FileWriter writer = new FileWriter(outputFile, false)) {
+        File summaryFile = resolveSummaryOutputFile(outputFilePath);
+        try (BufferedWriter writer = Files.newBufferedWriter(summaryFile.toPath(), StandardCharsets.UTF_8)) {
             for (File file : writtenFiles) {
                 writer.append(file.getAbsolutePath()).append(System.lineSeparator());
             }
             writer.flush();
         } catch (IOException e) {
-            throw new GradleException("File '" + outputFile + "' is not writable", e);
+            throw new GradleException("File '" + summaryFile + "' is not writable", e);
+        }
+    }
+
+    /**
+     * Resolve and validate the user-provided summary output path from the JVM system property.
+     * Canonicalizes the path to prevent traversal via {@code ..} or symbolic links.
+     */
+    private File resolveSummaryOutputFile(String outputFilePath) {
+        if (outputFilePath.indexOf('\0') >= 0) {
+            throw new GradleException("Invalid output file path: " + outputFilePath);
+        }
+        try {
+            File summaryFile = new File(outputFilePath).getCanonicalFile();
+            File parent = summaryFile.getParentFile();
+            if (parent != null && !parent.exists() && !parent.mkdirs() && !parent.exists()) {
+                throw new GradleException("Cannot create parent directory for output file: " + outputFilePath);
+            }
+            return summaryFile;
+        } catch (IOException e) {
+            throw new GradleException("Invalid output file path: " + outputFilePath, e);
         }
     }
 
@@ -144,14 +165,27 @@ public class GenerateDepTrees extends DefaultTask {
         if (!outputDir.isDirectory()) {
             return writtenFiles;
         }
+        Path outputDirPath;
+        try {
+            outputDirPath = outputDir.getCanonicalFile().toPath();
+        } catch (IOException e) {
+            throw new GradleException("Failed to resolve dependency tree output directory: " + pluginOutputDir, e);
+        }
         File[] files = outputDir.listFiles();
         if (files == null) {
             return writtenFiles;
         }
         Arrays.sort(files, Comparator.comparing(File::getName));
         for (File file : files) {
-            if (file.isFile()) {
-                writtenFiles.add(file);
+            if (!file.isFile()) {
+                continue;
+            }
+            try {
+                if (file.getCanonicalFile().toPath().startsWith(outputDirPath)) {
+                    writtenFiles.add(file);
+                }
+            } catch (IOException e) {
+                throw new GradleException("Failed to resolve dependency tree output file: " + file, e);
             }
         }
         return writtenFiles;
