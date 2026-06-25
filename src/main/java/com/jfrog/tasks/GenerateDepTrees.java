@@ -54,7 +54,12 @@ public class GenerateDepTrees extends DefaultTask {
         });
 
         if (getProject() == getProject().getRootProject() || !includeAllBuildFiles) {
-            doLast("writeDepTreeSummary", task -> writeDepTreeSummary());
+            // doLast runs even when a @CacheableTask is UP_TO_DATE on Gradle < 7.6; skip summary in that case.
+            doLast("writeDepTreeSummary", task -> {
+                if (task.getState().getDidWork()) {
+                    writeDepTreeSummary();
+                }
+            });
         }
 
         // On Gradle 7.4+, mark this task as incompatible with the configuration cache
