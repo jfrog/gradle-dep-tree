@@ -42,14 +42,20 @@ public class GenerateDepTrees extends DefaultTask {
     private final Path pluginOutputDir = Paths.get(getProject().getRootProject().getBuildDir().getPath(), "gradle-dep-tree");
 
     public GenerateDepTrees() {
-        // Disables executing this task on subprojects
-        setImpliesSubProjects(true);
+        boolean includeAllBuildFiles = Boolean.parseBoolean(System.getProperty(INCLUDE_ALL_BUILD_FILES, "false"));
+        // When scanning all build files from the root task, subproject task instances are redundant
+        // and cause summary-file races via competing finalizers.
+        setImpliesSubProjects(!includeAllBuildFiles);
         setOnlyIf(element -> {
             if (System.getProperty(OUTPUT_FILE_PROPERTY) == null) {
                 throw new GradleException("'" + OUTPUT_FILE_PROPERTY + "' system property is mandatory");
             }
             return true;
         });
+
+        if (getProject() == getProject().getRootProject() || !includeAllBuildFiles) {
+            doLast("writeDepTreeSummary", task -> writeDepTreeSummary());
+        }
 
         // On Gradle 7.4+, mark this task as incompatible with the configuration cache
         List<Integer> gradleVersionParts = Arrays.stream(getProject().getGradle().getGradleVersion().split("\\."))
@@ -113,25 +119,42 @@ public class GenerateDepTrees extends DefaultTask {
         }
     }
 
-    /**
-     * Write the summary to the stdout after the task finished.
-     *
-     * @return task dependency.
-     */
-    @Internal
-    @Override
-    @Nonnull
-    public TaskDependency getFinalizedBy() {
+    private void writeDepTreeSummary() {
         String outputFile = System.getProperty(OUTPUT_FILE_PROPERTY);
+        if (outputFile == null) {
+            return;
+        }
+        List<File> writtenFiles = listExistingOutputFiles();
+        if (writtenFiles.isEmpty()) {
+            throw new GradleException("generateDepTrees produced no output files under " + pluginOutputDir);
+        }
         try (FileWriter writer = new FileWriter(outputFile, false)) {
-            for (File file : getOutputFiles()) {
+            for (File file : writtenFiles) {
                 writer.append(file.getAbsolutePath()).append(System.lineSeparator());
             }
             writer.flush();
         } catch (IOException e) {
             throw new GradleException("File '" + outputFile + "' is not writable", e);
         }
-        return super.getFinalizedBy();
+    }
+
+    private List<File> listExistingOutputFiles() {
+        List<File> writtenFiles = new ArrayList<>();
+        File outputDir = pluginOutputDir.toFile();
+        if (!outputDir.isDirectory()) {
+            return writtenFiles;
+        }
+        File[] files = outputDir.listFiles();
+        if (files == null) {
+            return writtenFiles;
+        }
+        Arrays.sort(files, Comparator.comparing(File::getName));
+        for (File file : files) {
+            if (file.isFile()) {
+                writtenFiles.add(file);
+            }
+        }
+        return writtenFiles;
     }
 
     /**
