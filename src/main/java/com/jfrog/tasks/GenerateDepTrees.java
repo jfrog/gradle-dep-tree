@@ -53,15 +53,6 @@ public class GenerateDepTrees extends DefaultTask {
             return true;
         });
 
-        if (getProject() == getProject().getRootProject() || !includeAllBuildFiles) {
-            // doLast runs even when a @CacheableTask is UP_TO_DATE on Gradle < 7.6; skip summary in that case.
-            doLast("writeDepTreeSummary", task -> {
-                if (task.getState().getDidWork()) {
-                    writeDepTreeSummary();
-                }
-            });
-        }
-
         // On Gradle 7.4+, mark this task as incompatible with the configuration cache
         List<Integer> gradleVersionParts = Arrays.stream(getProject().getGradle().getGradleVersion().split("\\."))
                 .map(Integer::valueOf)
@@ -121,6 +112,14 @@ public class GenerateDepTrees extends DefaultTask {
             GradleDepTreeResults results = createProjectDependencyTree(project);
             // Write output to file
             Utils.saveToFileAsJson(getProjectOutputFile(project), results);
+        }
+        writeDepTreeSummaryIfResponsible();
+    }
+
+    private void writeDepTreeSummaryIfResponsible() {
+        boolean includeAllBuildFiles = Boolean.parseBoolean(System.getProperty(INCLUDE_ALL_BUILD_FILES, "false"));
+        if (getProject() == getProject().getRootProject() || !includeAllBuildFiles) {
+            writeDepTreeSummary();
         }
     }
 
