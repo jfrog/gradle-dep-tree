@@ -41,9 +41,11 @@ public class GenerateDepTrees extends DefaultTask {
 
     private final Path pluginOutputDir = Paths.get(getProject().getRootProject().getBuildDir().getPath(), "gradle-dep-tree");
     private final boolean includeAllBuildFiles;
+    private final boolean includeIncludedBuilds;
 
     public GenerateDepTrees() {
         includeAllBuildFiles = Boolean.parseBoolean(System.getProperty(INCLUDE_ALL_BUILD_FILES, "false"));
+        includeIncludedBuilds = Boolean.parseBoolean(System.getProperty(INCLUDE_INCLUDED_BUILDS, "false"));
         // When scanning all build files from the root task, subproject task instances are redundant
         // and would race on the summary file if they also wrote it.
         setImpliesSubProjects(!includeAllBuildFiles);
@@ -212,7 +214,7 @@ public class GenerateDepTrees extends DefaultTask {
             }
         }
 
-        if (Boolean.parseBoolean(System.getProperty(INCLUDE_INCLUDED_BUILDS))) {
+        if (includeIncludedBuilds) {
             try {
                 for (IncludedBuildState b : getBuildStateRegistry().getIncludedBuilds()) {
                     for (ProjectState ps : b.getProjects().getAllProjects()) {
