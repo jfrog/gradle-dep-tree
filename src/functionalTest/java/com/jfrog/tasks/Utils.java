@@ -1,6 +1,6 @@
 package com.jfrog.tasks;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.jfrog.GradleDepTreeResults;
 import com.jfrog.GradleDependencyNode;
 import org.apache.commons.io.FileUtils;

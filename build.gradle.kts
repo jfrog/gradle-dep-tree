@@ -19,11 +19,20 @@ tasks.compileJava {
 
 val functionalTest by sourceSets.creating
 
+tasks.named<JavaCompile>("compileFunctionalTestJava") {
+    javaCompiler.set(
+        javaToolchains.compilerFor {
+            languageVersion.set(JavaLanguageVersion.of(17))
+        }
+    )
+    options.release.set(17)
+}
+
 dependencies {
     testImplementation("commons-io:commons-io:2.14.0")
     testImplementation("org.testng:testng:7.7.1")
     testImplementation("org.mockito:mockito-core:4.11.0")
-    "functionalTestImplementation"("com.fasterxml.jackson.core:jackson-databind:2.18.8")
+    "functionalTestImplementation"("tools.jackson.core:jackson-databind:3.1.4")
     "functionalTestImplementation"("commons-io:commons-io:2.14.0")
     "functionalTestImplementation"("org.testng:testng:7.7.1")
     "functionalTestImplementation"(project)
@@ -65,6 +74,11 @@ val functionalTestTask = tasks.register<Test>("functionalTest") {
     testClassesDirs = functionalTest.output.classesDirs
     classpath = functionalTest.runtimeClasspath
     mustRunAfter(tasks.test)
+    javaLauncher.set(
+        javaToolchains.launcherFor {
+            languageVersion.set(JavaLanguageVersion.of(17))
+        }
+    )
 }
 
 tasks.check {
