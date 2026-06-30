@@ -40,11 +40,12 @@ public class GenerateDepTrees extends DefaultTask {
     public static final String INCLUDE_INCLUDED_BUILDS = "com.jfrog.includeIncludedBuilds";
 
     private final Path pluginOutputDir = Paths.get(getProject().getRootProject().getBuildDir().getPath(), "gradle-dep-tree");
+    private final boolean includeAllBuildFiles;
 
     public GenerateDepTrees() {
-        boolean includeAllBuildFiles = Boolean.parseBoolean(System.getProperty(INCLUDE_ALL_BUILD_FILES, "false"));
+        includeAllBuildFiles = Boolean.parseBoolean(System.getProperty(INCLUDE_ALL_BUILD_FILES, "false"));
         // When scanning all build files from the root task, subproject task instances are redundant
-        // and cause summary-file races via competing finalizers.
+        // and would race on the summary file if they also wrote it.
         setImpliesSubProjects(!includeAllBuildFiles);
         setOnlyIf(element -> {
             if (System.getProperty(OUTPUT_FILE_PROPERTY) == null) {
@@ -113,11 +114,6 @@ public class GenerateDepTrees extends DefaultTask {
             // Write output to file
             Utils.saveToFileAsJson(getProjectOutputFile(project), results);
         }
-        writeDepTreeSummaryIfResponsible();
-    }
-
-    private void writeDepTreeSummaryIfResponsible() {
-        boolean includeAllBuildFiles = Boolean.parseBoolean(System.getProperty(INCLUDE_ALL_BUILD_FILES, "false"));
         if (getProject() == getProject().getRootProject() || !includeAllBuildFiles) {
             writeDepTreeSummary();
         }
@@ -209,7 +205,6 @@ public class GenerateDepTrees extends DefaultTask {
         Project rootProj = getProject();
 
         projectsMap.put(rootProj.getPath(), rootProj);
-        boolean includeAllBuildFiles = Boolean.parseBoolean(System.getProperty(INCLUDE_ALL_BUILD_FILES));
 
         for (Project project : rootProj.getSubprojects()) {
             if (includeAllBuildFiles || !project.getBuildFile().exists()) {
