@@ -14,8 +14,8 @@ import org.gradle.internal.build.IncludedBuildState;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
+import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -40,10 +40,15 @@ public class GenerateDepTrees extends DefaultTask {
     public static final String INCLUDE_INCLUDED_BUILDS = "com.jfrog.includeIncludedBuilds";
 
     private final Path pluginOutputDir = Paths.get(getProject().getRootProject().getBuildDir().getPath(), "gradle-dep-tree");
+    private final boolean includeAllBuildFiles;
+    private final boolean includeIncludedBuilds;
 
     public GenerateDepTrees() {
-        // Disables executing this task on subprojects
-        setImpliesSubProjects(true);
+        includeAllBuildFiles = Boolean.parseBoolean(System.getProperty(INCLUDE_ALL_BUILD_FILES, "false"));
+        includeIncludedBuilds = Boolean.parseBoolean(System.getProperty(INCLUDE_INCLUDED_BUILDS, "false"));
+        // When scanning all build files from the root task, subproject task instances are redundant
+        // and would race on the summary file if they also wrote it.
+        setImpliesSubProjects(!includeAllBuildFiles);
         setOnlyIf(element -> {
             if (System.getProperty(OUTPUT_FILE_PROPERTY) == null) {
                 throw new GradleException("'" + OUTPUT_FILE_PROPERTY + "' system property is mandatory");
@@ -111,27 +116,81 @@ public class GenerateDepTrees extends DefaultTask {
             // Write output to file
             Utils.saveToFileAsJson(getProjectOutputFile(project), results);
         }
+        if (getProject() == getProject().getRootProject() || !includeAllBuildFiles) {
+            writeDepTreeSummary();
+        }
     }
 
-    /**
-     * Write the summary to the stdout after the task finished.
-     *
-     * @return task dependency.
-     */
-    @Internal
-    @Override
-    @Nonnull
-    public TaskDependency getFinalizedBy() {
-        String outputFile = System.getProperty(OUTPUT_FILE_PROPERTY);
-        try (FileWriter writer = new FileWriter(outputFile, false)) {
-            for (File file : getOutputFiles()) {
+    private void writeDepTreeSummary() {
+        String outputFilePath = System.getProperty(OUTPUT_FILE_PROPERTY);
+        if (outputFilePath == null) {
+            return;
+        }
+        List<File> writtenFiles = listExistingOutputFiles();
+        if (writtenFiles.isEmpty()) {
+            throw new GradleException("generateDepTrees produced no output files under " + pluginOutputDir);
+        }
+        File summaryFile = resolveSummaryOutputFile(outputFilePath);
+        try (BufferedWriter writer = Files.newBufferedWriter(summaryFile.toPath(), StandardCharsets.UTF_8)) {
+            for (File file : writtenFiles) {
                 writer.append(file.getAbsolutePath()).append(System.lineSeparator());
             }
             writer.flush();
         } catch (IOException e) {
-            throw new GradleException("File '" + outputFile + "' is not writable", e);
+            throw new GradleException("File '" + summaryFile + "' is not writable", e);
         }
-        return super.getFinalizedBy();
+    }
+
+    /**
+     * Resolve and validate the user-provided summary output path from the JVM system property.
+     * Canonicalizes the path to prevent traversal via {@code ..} or symbolic links.
+     */
+    private File resolveSummaryOutputFile(String outputFilePath) {
+        if (outputFilePath.indexOf('\0') >= 0) {
+            throw new GradleException("Invalid output file path: " + outputFilePath);
+        }
+        try {
+            File summaryFile = new File(outputFilePath).getCanonicalFile();
+            File parent = summaryFile.getParentFile();
+            if (parent != null && !parent.exists() && !parent.mkdirs() && !parent.exists()) {
+                throw new GradleException("Cannot create parent directory for output file: " + outputFilePath);
+            }
+            return summaryFile;
+        } catch (IOException e) {
+            throw new GradleException("Invalid output file path: " + outputFilePath, e);
+        }
+    }
+
+    private List<File> listExistingOutputFiles() {
+        List<File> writtenFiles = new ArrayList<>();
+        File outputDir = pluginOutputDir.toFile();
+        if (!outputDir.isDirectory()) {
+            return writtenFiles;
+        }
+        Path outputDirPath;
+        try {
+            outputDirPath = outputDir.getCanonicalFile().toPath();
+        } catch (IOException e) {
+            throw new GradleException("Failed to resolve dependency tree output directory: " + pluginOutputDir, e);
+        }
+        File[] files = outputDir.listFiles();
+        if (files == null) {
+            return writtenFiles;
+        }
+        Arrays.sort(files, Comparator.comparing(File::getName));
+        for (File file : files) {
+            if (!file.isFile()) {
+                continue;
+            }
+            try {
+                if (file.getCanonicalFile().toPath().startsWith(outputDirPath)) {
+                    writtenFiles.add(file);
+                }
+            } catch (IOException e) {
+                throw new GradleException("Failed to resolve dependency tree output file: " + file, e);
+            }
+        }
+        return writtenFiles;
     }
 
     /**
@@ -148,7 +207,6 @@ public class GenerateDepTrees extends DefaultTask {
         Project rootProj = getProject();
 
         projectsMap.put(rootProj.getPath(), rootProj);
-        boolean includeAllBuildFiles = Boolean.parseBoolean(System.getProperty(INCLUDE_ALL_BUILD_FILES));
 
         for (Project project : rootProj.getSubprojects()) {
             if (includeAllBuildFiles || !project.getBuildFile().exists()) {
@@ -156,7 +214,7 @@ public class GenerateDepTrees extends DefaultTask {
             }
         }
 
-        if (Boolean.parseBoolean(System.getProperty(INCLUDE_INCLUDED_BUILDS))) {
+        if (includeIncludedBuilds) {
             try {
                 for (IncludedBuildState b : getBuildStateRegistry().getIncludedBuilds()) {
                     for (ProjectState ps : b.getProjects().getAllProjects()) {

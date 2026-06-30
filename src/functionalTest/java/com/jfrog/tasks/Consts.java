@@ -21,4 +21,6 @@ public class Consts {
     static final Path EMPTY = PROJECTS_ROOT.resolve("empty");
     // Multi-project fixture for the project-dep-without-module-version regression.
     static final Path PROJECT_DEP_NO_VERSION = PROJECTS_ROOT.resolve("projectDepNoVersion");
+    // Root container + subproject layout (custom-applications + CALINDI).
+    static final Path ROOT_CONTAINER = PROJECTS_ROOT.resolve("root-container");
 }
