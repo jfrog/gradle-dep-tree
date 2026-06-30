@@ -23,7 +23,7 @@ dependencies {
     testImplementation("commons-io:commons-io:2.14.0")
     testImplementation("org.testng:testng:7.7.1")
     testImplementation("org.mockito:mockito-core:4.11.0")
-    "functionalTestImplementation"("com.fasterxml.jackson.core:jackson-databind:2.18.6")
+    "functionalTestImplementation"("com.fasterxml.jackson.core:jackson-databind:2.18.8")
     "functionalTestImplementation"("commons-io:commons-io:2.14.0")
     "functionalTestImplementation"("org.testng:testng:7.7.1")
     "functionalTestImplementation"(project)
