@@ -38,14 +38,17 @@ public class GenerateDepTrees extends DefaultTask {
     public static final String INCLUDE_ALL_BUILD_FILES = "com.jfrog.includeAllBuildFiles";
     public static final String CURATION_AUDIT_MODE = "com.jfrog.curationAuditMode";
     public static final String INCLUDE_INCLUDED_BUILDS = "com.jfrog.includeIncludedBuilds";
+    public static final String EXCLUDE_TEST_CONFIGURATIONS = "com.jfrog.excludeTestConfigurations";
 
     private final Path pluginOutputDir = Paths.get(getProject().getRootProject().getBuildDir().getPath(), "gradle-dep-tree");
     private final boolean includeAllBuildFiles;
     private final boolean includeIncludedBuilds;
+    private final boolean excludeTestConfigurations;
 
     public GenerateDepTrees() {
         includeAllBuildFiles = Boolean.parseBoolean(System.getProperty(INCLUDE_ALL_BUILD_FILES, "false"));
         includeIncludedBuilds = Boolean.parseBoolean(System.getProperty(INCLUDE_INCLUDED_BUILDS, "false"));
+        excludeTestConfigurations = Boolean.parseBoolean(System.getProperty(EXCLUDE_TEST_CONFIGURATIONS, "false"));
         // When scanning all build files from the root task, subproject task instances are redundant
         // and would race on the summary file if they also wrote it.
         setImpliesSubProjects(!includeAllBuildFiles);
@@ -106,6 +109,16 @@ public class GenerateDepTrees extends DefaultTask {
             outputFiles.add(getProjectOutputFile(project));
         }
         return outputFiles;
+    }
+
+    /**
+     * Whether test configurations (names containing {@code test}, e.g. testImplementation,
+     * androidTestCompileClasspath) are skipped when building the dependency tree.
+     * Controlled by {@link #EXCLUDE_TEST_CONFIGURATIONS}.
+     */
+    @Input
+    public boolean getExcludeTestConfigurations() {
+        return excludeTestConfigurations;
     }
 
     @TaskAction
@@ -271,11 +284,23 @@ public class GenerateDepTrees extends DefaultTask {
         ConfigurationContainer configsContainer = project.getConfigurations();
         Set<String> names = new HashSet<>(configsContainer.getNames());
         for (String name : names) {
+            if (excludeTestConfigurations && isTestConfiguration(name)) {
+                continue;
+            }
             // Pass `project` so synthesizeProjectNodeId can resolve sibling subprojects
             // (keeps synthesized ids aligned with getProjectModuleId).
             addConfiguration(project, root, configsContainer.getByName(name), nodes);
         }
         return new GradleDepTreeResults(rootId, nodes);
+    }
+
+    /**
+     * Returns true when the Gradle configuration name is a test scope
+     * ({@code testImplementation}, {@code testCompileClasspath}, {@code androidTest*}, etc.).
+     * Debug/release variant names without {@code test} are not treated as test configurations.
+     */
+    public static boolean isTestConfiguration(String configurationName) {
+        return configurationName != null && configurationName.toLowerCase(Locale.ROOT).contains("test");
     }
 
     private String getProjectModuleId(Project project) {

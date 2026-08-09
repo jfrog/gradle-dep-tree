@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.jfrog.tasks.Consts.TEST_DIR;
+import static com.jfrog.tasks.GenerateDepTrees.EXCLUDE_TEST_CONFIGURATIONS;
 import static com.jfrog.tasks.GenerateDepTrees.INCLUDE_ALL_BUILD_FILES;
 import static com.jfrog.tasks.GenerateDepTrees.OUTPUT_FILE_PROPERTY;
 import static org.gradle.testkit.runner.TaskOutcome.SUCCESS;
@@ -61,25 +62,38 @@ public class Utils {
      * @throws IOException in case of any I/O error.
      */
     static void generateDepTrees(String gradleVersion, boolean includeAllBuildFiles, Path... projectNames) throws IOException {
+        generateDepTrees(gradleVersion, includeAllBuildFiles, false, projectNames);
+    }
+
+    /**
+     * Run and assert generateDepTrees task.
+     *
+     * @param gradleVersion              - The Gradle version to use
+     * @param includeAllBuildFiles       - Whether to include all build files
+     * @param excludeTestConfigurations  - Whether to skip Gradle test configurations
+     * @param projectNames               - The project names to use
+     * @throws IOException in case of any I/O error.
+     */
+    static void generateDepTrees(String gradleVersion, boolean includeAllBuildFiles, boolean excludeTestConfigurations, Path... projectNames) throws IOException {
         Path outputFile = Files.createTempFile("gradle-deps-tree-test", "");
         try {
             for (Path projectName : projectNames) {
                 File projectDir = TEST_DIR.toPath().resolve(projectName).toFile();
 
                 // Run generateDepTrees and assert success
-                BuildResult result = runGenerateDepTrees(gradleVersion, projectDir, outputFile, includeAllBuildFiles);
+                BuildResult result = runGenerateDepTrees(gradleVersion, projectDir, outputFile, includeAllBuildFiles, excludeTestConfigurations);
                 assertSuccess(result);
                 assertOutput(outputFile);
 
                 // Run generateDepTrees and make sure the task was cached
-                result = runGenerateDepTrees(gradleVersion, projectDir, outputFile, includeAllBuildFiles);
+                result = runGenerateDepTrees(gradleVersion, projectDir, outputFile, includeAllBuildFiles, excludeTestConfigurations);
                 assertUpToDate(result);
                 assertOutput(outputFile);
 
                 // Make a change in build.gradle file and make sure the cache was invalidated after running generateDepTrees
                 // jfrog-ignore: this is a test
                 Files.write(projectDir.toPath().resolve("build.gradle"), "\n".getBytes(), StandardOpenOption.APPEND);
-                result = runGenerateDepTrees(gradleVersion, projectDir, outputFile, includeAllBuildFiles);
+                result = runGenerateDepTrees(gradleVersion, projectDir, outputFile, includeAllBuildFiles, excludeTestConfigurations);
                 assertSuccess(result);
                 assertOutput(outputFile);
             }
@@ -167,13 +181,16 @@ public class Utils {
      * @param outputFile    - The output file
      * @return the build results.
      */
-    private static BuildResult runGenerateDepTrees(String gradleVersion, File projectDir, Path outputFile, boolean includeAllBuildFiles) {
+    private static BuildResult runGenerateDepTrees(String gradleVersion, File projectDir, Path outputFile, boolean includeAllBuildFiles, boolean excludeTestConfigurations) {
         return GradleRunner.create()
                 .withGradleVersion(gradleVersion)
                 .withProjectDir(projectDir)
                 .withPluginClasspath()
                 .withDebug(true)
-                .withArguments("generateDepTrees", "-q", "-D" + INCLUDE_ALL_BUILD_FILES + "=" + includeAllBuildFiles, "-D" + OUTPUT_FILE_PROPERTY + "=" + outputFile.toAbsolutePath())
+                .withArguments("generateDepTrees", "-q",
+                        "-D" + INCLUDE_ALL_BUILD_FILES + "=" + includeAllBuildFiles,
+                        "-D" + EXCLUDE_TEST_CONFIGURATIONS + "=" + excludeTestConfigurations,
+                        "-D" + OUTPUT_FILE_PROPERTY + "=" + outputFile.toAbsolutePath())
                 .build();
     }
 }
