@@ -48,8 +48,8 @@ public class BasicProjectTest extends FunctionalTestBase {
     }
 
     @Test(dataProvider = "gradleVersions")
-    public void testBasicProjectExcludeTestConfigurations(String gradleVersion) throws IOException {
-        generateDepTrees(gradleVersion, false, true, Paths.get("."));
+    public void testBasicProjectExcludeConfigurationsPattern(String gradleVersion) throws IOException {
+        generateDepTrees(gradleVersion, false, "(?i)test", Paths.get("."));
         Path outputDir = TEST_DIR.toPath().resolve("build").resolve("gradle-dep-tree");
         try (Stream<Path> files = Files.list(outputDir)) {
             Set<String> actualProjects = files.map(Path::getFileName).map(Path::toString).collect(Collectors.toSet());
