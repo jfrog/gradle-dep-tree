@@ -182,18 +182,22 @@ public class Utils {
      * @param projectDir                   - The project directory
      * @param outputFile                   - The output file
      * @param includeAllBuildFiles         - Whether to include all build files
-     * @param excludeConfigurationsPattern - Regex of configuration names to exclude; null/blank omits the flag
+     * @param excludeConfigurationsPattern - Regex of configuration names to exclude; null/blank means none
      * @return the build results.
      */
     private static BuildResult runGenerateDepTrees(String gradleVersion, File projectDir, Path outputFile,
                                                    boolean includeAllBuildFiles, String excludeConfigurationsPattern) {
+        // Always pass the pattern property. TestKit withDebug(true) shares the test JVM, so omitting
+        // -D after a prior run that set (?i)test would leak into later tests via System.getProperty.
+        String pattern = excludeConfigurationsPattern == null ? "" : excludeConfigurationsPattern.trim();
+        if (pattern.isEmpty()) {
+            System.clearProperty(EXCLUDE_CONFIGURATIONS_PATTERN);
+        }
         List<String> args = new ArrayList<>();
         args.add("generateDepTrees");
         args.add("-q");
         args.add("-D" + INCLUDE_ALL_BUILD_FILES + "=" + includeAllBuildFiles);
-        if (excludeConfigurationsPattern != null && !excludeConfigurationsPattern.trim().isEmpty()) {
-            args.add("-D" + EXCLUDE_CONFIGURATIONS_PATTERN + "=" + excludeConfigurationsPattern);
-        }
+        args.add("-D" + EXCLUDE_CONFIGURATIONS_PATTERN + "=" + pattern);
         args.add("-D" + OUTPUT_FILE_PROPERTY + "=" + outputFile.toAbsolutePath());
         return GradleRunner.create()
                 .withGradleVersion(gradleVersion)
