@@ -16,6 +16,7 @@ import static com.jfrog.tasks.Consts.BASIC;
 import static com.jfrog.tasks.Consts.TEST_DIR;
 import static com.jfrog.tasks.Utils.*;
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertFalse;
 
 /**
  * Functional tests for the project under resources/basic/
@@ -42,6 +43,23 @@ public class BasicProjectTest extends FunctionalTestBase {
                 assertDirectChild(results, "junit:junit:4.12", "testImplementation", false);
                 assertDirectChild(results, "joda-time:joda-time:2.2", "implementation", false);
                 assertDirectChild(results, "missing:dependency:404", "testImplementation", true);
+            }
+        }
+    }
+
+    @Test(dataProvider = "gradleVersions")
+    public void testBasicProjectExcludeConfigurationsPattern(String gradleVersion) throws IOException {
+        generateDepTrees(gradleVersion, false, "(?i)test", Paths.get("."));
+        Path outputDir = TEST_DIR.toPath().resolve("build").resolve("gradle-dep-tree");
+        try (Stream<Path> files = Files.list(outputDir)) {
+            Set<String> actualProjects = files.map(Path::getFileName).map(Path::toString).collect(Collectors.toSet());
+            assertEquals(1, actualProjects.size());
+            for (String actualProject : actualProjects) {
+                GradleDepTreeResults results = objectMapper.readValue(outputDir.resolve(actualProject).toFile(), GradleDepTreeResults.class);
+                assertDirectChild(results, "joda-time:joda-time:2.2", "implementation", false);
+                assertFalse(results.getNodes().containsKey("junit:junit:4.12"));
+                assertFalse(results.getNodes().containsKey("missing:dependency:404"));
+                assertFalse(results.getNodes().get(results.getRoot()).getChildren().contains("junit:junit:4.12"));
             }
         }
     }

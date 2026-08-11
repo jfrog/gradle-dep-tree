@@ -22,6 +22,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 
 import static com.jfrog.GradleDependencyTreeUtils.addConfiguration;
@@ -38,14 +40,18 @@ public class GenerateDepTrees extends DefaultTask {
     public static final String INCLUDE_ALL_BUILD_FILES = "com.jfrog.includeAllBuildFiles";
     public static final String CURATION_AUDIT_MODE = "com.jfrog.curationAuditMode";
     public static final String INCLUDE_INCLUDED_BUILDS = "com.jfrog.includeIncludedBuilds";
+    public static final String EXCLUDE_CONFIGURATIONS_PATTERN = "com.jfrog.excludeConfigurationsPattern";
 
     private final Path pluginOutputDir = Paths.get(getProject().getRootProject().getBuildDir().getPath(), "gradle-dep-tree");
     private final boolean includeAllBuildFiles;
     private final boolean includeIncludedBuilds;
+    private final String excludeConfigurationsPattern;
 
     public GenerateDepTrees() {
         includeAllBuildFiles = Boolean.parseBoolean(System.getProperty(INCLUDE_ALL_BUILD_FILES, "false"));
         includeIncludedBuilds = Boolean.parseBoolean(System.getProperty(INCLUDE_INCLUDED_BUILDS, "false"));
+        String patternProp = System.getProperty(EXCLUDE_CONFIGURATIONS_PATTERN);
+        excludeConfigurationsPattern = patternProp == null ? "" : patternProp.trim();
         // When scanning all build files from the root task, subproject task instances are redundant
         // and would race on the summary file if they also wrote it.
         setImpliesSubProjects(!includeAllBuildFiles);
@@ -106,6 +112,15 @@ public class GenerateDepTrees extends DefaultTask {
             outputFiles.add(getProjectOutputFile(project));
         }
         return outputFiles;
+    }
+
+    /**
+     * Regex used to skip matching Gradle configuration names when building the dependency tree.
+     * Empty means no configurations are excluded. Controlled by {@link #EXCLUDE_CONFIGURATIONS_PATTERN}.
+     */
+    @Input
+    public String getExcludeConfigurationsPattern() {
+        return excludeConfigurationsPattern;
     }
 
     @TaskAction
@@ -270,12 +285,45 @@ public class GenerateDepTrees extends DefaultTask {
         // This avoids issues caused by dynamic modifications by other Gradle plugins.
         ConfigurationContainer configsContainer = project.getConfigurations();
         Set<String> names = new HashSet<>(configsContainer.getNames());
+        Pattern excludePattern = compileExcludePattern(excludeConfigurationsPattern);
         for (String name : names) {
+            if (excludePattern != null && name != null && excludePattern.matcher(name).find()) {
+                continue;
+            }
             // Pass `project` so synthesizeProjectNodeId can resolve sibling subprojects
             // (keeps synthesized ids aligned with getProjectModuleId).
             addConfiguration(project, root, configsContainer.getByName(name), nodes);
         }
         return new GradleDepTreeResults(rootId, nodes);
+    }
+
+    /**
+     * Returns true when {@code configurationName} should be skipped for the given exclude regex.
+     * Blank/null {@code pattern} never excludes. Invalid patterns throw {@link IllegalArgumentException}.
+     */
+    public static boolean shouldExcludeConfiguration(String configurationName, String pattern) {
+        if (pattern == null || pattern.trim().isEmpty()) {
+            return false;
+        }
+        if (configurationName == null) {
+            return false;
+        }
+        try {
+            return Pattern.compile(pattern).matcher(configurationName).find();
+        } catch (PatternSyntaxException e) {
+            throw new IllegalArgumentException("Invalid " + EXCLUDE_CONFIGURATIONS_PATTERN + ": " + pattern, e);
+        }
+    }
+
+    private static Pattern compileExcludePattern(String pattern) {
+        if (pattern == null || pattern.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return Pattern.compile(pattern);
+        } catch (PatternSyntaxException e) {
+            throw new GradleException("Invalid " + EXCLUDE_CONFIGURATIONS_PATTERN + ": " + pattern, e);
+        }
     }
 
     private String getProjectModuleId(Project project) {

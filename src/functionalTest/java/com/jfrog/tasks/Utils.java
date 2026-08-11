@@ -14,12 +14,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.jfrog.tasks.Consts.TEST_DIR;
+import static com.jfrog.tasks.GenerateDepTrees.EXCLUDE_CONFIGURATIONS_PATTERN;
 import static com.jfrog.tasks.GenerateDepTrees.INCLUDE_ALL_BUILD_FILES;
 import static com.jfrog.tasks.GenerateDepTrees.OUTPUT_FILE_PROPERTY;
 import static org.gradle.testkit.runner.TaskOutcome.SUCCESS;
@@ -56,30 +58,44 @@ public class Utils {
     /**
      * Run and assert generateDepTrees task.
      *
-     * @param gradleVersion - The Gradle version to use
-     * @param projectNames  - The project names to use
+     * @param gradleVersion        - The Gradle version to use
+     * @param includeAllBuildFiles - Whether to include all build files
+     * @param projectNames         - The project names to use
      * @throws IOException in case of any I/O error.
      */
     static void generateDepTrees(String gradleVersion, boolean includeAllBuildFiles, Path... projectNames) throws IOException {
+        generateDepTrees(gradleVersion, includeAllBuildFiles, null, projectNames);
+    }
+
+    /**
+     * Run and assert generateDepTrees task.
+     *
+     * @param gradleVersion                 - The Gradle version to use
+     * @param includeAllBuildFiles          - Whether to include all build files
+     * @param excludeConfigurationsPattern  - Regex of configuration names to exclude; null/blank means none
+     * @param projectNames                  - The project names to use
+     * @throws IOException in case of any I/O error.
+     */
+    static void generateDepTrees(String gradleVersion, boolean includeAllBuildFiles, String excludeConfigurationsPattern, Path... projectNames) throws IOException {
         Path outputFile = Files.createTempFile("gradle-deps-tree-test", "");
         try {
             for (Path projectName : projectNames) {
                 File projectDir = TEST_DIR.toPath().resolve(projectName).toFile();
 
                 // Run generateDepTrees and assert success
-                BuildResult result = runGenerateDepTrees(gradleVersion, projectDir, outputFile, includeAllBuildFiles);
+                BuildResult result = runGenerateDepTrees(gradleVersion, projectDir, outputFile, includeAllBuildFiles, excludeConfigurationsPattern);
                 assertSuccess(result);
                 assertOutput(outputFile);
 
                 // Run generateDepTrees and make sure the task was cached
-                result = runGenerateDepTrees(gradleVersion, projectDir, outputFile, includeAllBuildFiles);
+                result = runGenerateDepTrees(gradleVersion, projectDir, outputFile, includeAllBuildFiles, excludeConfigurationsPattern);
                 assertUpToDate(result);
                 assertOutput(outputFile);
 
                 // Make a change in build.gradle file and make sure the cache was invalidated after running generateDepTrees
                 // jfrog-ignore: this is a test
                 Files.write(projectDir.toPath().resolve("build.gradle"), "\n".getBytes(), StandardOpenOption.APPEND);
-                result = runGenerateDepTrees(gradleVersion, projectDir, outputFile, includeAllBuildFiles);
+                result = runGenerateDepTrees(gradleVersion, projectDir, outputFile, includeAllBuildFiles, excludeConfigurationsPattern);
                 assertSuccess(result);
                 assertOutput(outputFile);
             }
@@ -162,18 +178,33 @@ public class Utils {
     /**
      * Run Gradle process with the GradleRunner.
      *
-     * @param gradleVersion - The Gradle version to use
-     * @param projectDir    - The project directory
-     * @param outputFile    - The output file
+     * @param gradleVersion                - The Gradle version to use
+     * @param projectDir                   - The project directory
+     * @param outputFile                   - The output file
+     * @param includeAllBuildFiles         - Whether to include all build files
+     * @param excludeConfigurationsPattern - Regex of configuration names to exclude; null/blank means none
      * @return the build results.
      */
-    private static BuildResult runGenerateDepTrees(String gradleVersion, File projectDir, Path outputFile, boolean includeAllBuildFiles) {
+    private static BuildResult runGenerateDepTrees(String gradleVersion, File projectDir, Path outputFile,
+                                                   boolean includeAllBuildFiles, String excludeConfigurationsPattern) {
+        // Always pass the pattern property. TestKit withDebug(true) shares the test JVM, so omitting
+        // -D after a prior run that set (?i)test would leak into later tests via System.getProperty.
+        String pattern = excludeConfigurationsPattern == null ? "" : excludeConfigurationsPattern.trim();
+        if (pattern.isEmpty()) {
+            System.clearProperty(EXCLUDE_CONFIGURATIONS_PATTERN);
+        }
+        List<String> args = new ArrayList<>();
+        args.add("generateDepTrees");
+        args.add("-q");
+        args.add("-D" + INCLUDE_ALL_BUILD_FILES + "=" + includeAllBuildFiles);
+        args.add("-D" + EXCLUDE_CONFIGURATIONS_PATTERN + "=" + pattern);
+        args.add("-D" + OUTPUT_FILE_PROPERTY + "=" + outputFile.toAbsolutePath());
         return GradleRunner.create()
                 .withGradleVersion(gradleVersion)
                 .withProjectDir(projectDir)
                 .withPluginClasspath()
                 .withDebug(true)
-                .withArguments("generateDepTrees", "-q", "-D" + INCLUDE_ALL_BUILD_FILES + "=" + includeAllBuildFiles, "-D" + OUTPUT_FILE_PROPERTY + "=" + outputFile.toAbsolutePath())
+                .withArguments(args)
                 .build();
     }
 }

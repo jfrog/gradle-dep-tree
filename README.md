@@ -14,6 +14,19 @@ Inject the plugin using the [init.gradle](./init.gradle) initialization script, 
 directory containing a build.gradle file. The plugin will generate a dependency tree for each subproject that does not
 contain a build.gradle file. To generate a dependency tree for each subproject that contains a Gradle build file, set the `-Dcom.jfrog.includeAllBuildFiles` flag to `true`.
 
+To skip Gradle configurations whose names match a regex, set
+`-Dcom.jfrog.excludeConfigurationsPattern=<regex>`. For example, to skip names containing
+`test` case-insensitively (including `testImplementation`, `androidTest*`, and also
+`testFixtures*` / accidental substring hits like `latestReleaseApi`):
+
+```bash
+gradle clean generateDepTrees -I <path/to/init.gradle> -q \
+  -Dcom.jfrog.depsTreeOutputFile=<path/to/output/file> \
+  -Dcom.jfrog.excludeConfigurationsPattern=(?i)test
+```
+
+If the property is omitted or blank, all configurations are included. Invalid regex fails the task.
+
 The command:
 
 ```bash
