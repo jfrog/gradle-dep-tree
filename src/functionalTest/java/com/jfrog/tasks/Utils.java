@@ -15,6 +15,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -122,6 +124,19 @@ public class Utils {
 
     static void assertRootChildrenCount(GradleDepTreeResults results, int expectedChildrenCount) {
         assertEquals(results.getNodes().get(results.getRoot()).getChildren().size(), expectedChildrenCount);
+    }
+
+    /**
+     * Assert a node's artifact types (e.g. "jar", "pom").
+     *
+     * @param results       - The tree results object
+     * @param childName     - The child name
+     * @param expectedTypes - The expected types set
+     */
+    static void assertTypes(GradleDepTreeResults results, String childName, String... expectedTypes) {
+        GradleDependencyNode child = results.getNodes().get(childName);
+        assertNotNull(child);
+        assertEquals(child.getTypes(), new HashSet<>(Arrays.asList(expectedTypes)));
     }
 
     /**

@@ -50,16 +50,20 @@ Output:
     "junit:junit:4.7": {
       "unresolved": false,
       "configurations": ["testCompileClasspath", "testImplementation", "testRuntimeClasspath"],
+      "types": ["jar"],
       "children": []
     },
     "org.jfrog.example.gradle:shared:1.0-SNAPSHOT": {
       "unresolved": false,
       "configurations": ["compileClasspath", "runtimeClasspath", "testCompileClasspath", "testRuntimeClasspath"],
+      "types": [],
       "children": ["junit:junit:4.7"]
     }
   }
 }
 ```
+
+`types` lists the artifact type(s) a dependency resolved as (`"jar"`, or `"pom"` for a BOM). May be empty if undetermined. Downstream consumers should ignore unrecognized values.
 
 ## 💻 Contributions
 

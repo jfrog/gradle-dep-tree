@@ -17,6 +17,7 @@ import java.util.Map;
 import static com.jfrog.Utils.UNSPECIFIED_ID_PART;
 import static com.jfrog.Utils.buildModuleId;
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertTrue;
 
 /**
  * @author yahavi
@@ -61,6 +62,24 @@ public class UtilsTest {
         String expectedOutput = FileUtils.readFileToString(RESOURCES_DIR.resolve("expectedDepTree.json").toFile(), StandardCharsets.UTF_8).trim();
         String actualOutput = FileUtils.readFileToString(outputFile, StandardCharsets.UTF_8).trim();
         assertEquals(actualOutput, expectedOutput);
+    }
+
+    /** appendToFileAsJson is hand-written, not reflection-based — locks in that "types" actually reaches the output. */
+    @Test
+    public void testSaveToFileAsJson_typesArePopulated_appearInOutput() throws IOException {
+        File outputFile = new File(tempDirPath.resolve("output-with-types.txt").toString());
+
+        GradleDependencyNode bom = new GradleDependencyNode("implementation");
+        bom.getTypes().add("pom");
+
+        Map<String, GradleDependencyNode> nodes = new HashMap<>();
+        nodes.put("bom", bom);
+
+        Utils.saveToFileAsJson(outputFile, new GradleDepTreeResults("bom", nodes));
+
+        String actualOutput = FileUtils.readFileToString(outputFile, StandardCharsets.UTF_8);
+        assertTrue(actualOutput.contains("\"types\": [\"pom\"]"),
+                "Expected the populated \"types\" set to appear in the output, but got:\n" + actualOutput);
     }
 
     // buildModuleId is the single source of truth for the group:name:version placeholder

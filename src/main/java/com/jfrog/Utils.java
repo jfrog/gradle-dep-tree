@@ -53,6 +53,7 @@ public class Utils {
         String keyIndentation = baseIndentation + indentationSpace;
         writer.append(keyIndentation).append(quotedKey("unresolved")).append(String.valueOf(dependencyTree.isUnresolved())).append(",").append(lineSeparator());
         writer.append(keyIndentation).append(quotedKey("configurations")).append(stringSetToJson(dependencyTree.getConfigurations())).append(",").append(lineSeparator());
+        writer.append(keyIndentation).append(quotedKey("types")).append(stringSetToJson(dependencyTree.getTypes())).append(",").append(lineSeparator());
         writer.append(keyIndentation).append(quotedKey("children")).append(stringSetToJson(dependencyTree.getChildren()));
         writer.append(lineSeparator()).append(baseIndentation).append("}");
     }
