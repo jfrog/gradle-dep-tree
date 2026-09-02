@@ -10,6 +10,8 @@ public class GradleDependencyNode {
     private final Set<String> children = new HashSet<>();
     // The Gradle configuration such as compileJava, implementation, testImplementation, etc.
     private final Set<String> configurations = new HashSet<>();
+    // The artifact type(s) this dependency was resolved as, e.g. "jar", "pom".
+    private final Set<String> types = new HashSet<>();
     private boolean unresolved;
 
     public GradleDependencyNode() {
@@ -25,6 +27,10 @@ public class GradleDependencyNode {
 
     public Set<String> getConfigurations() {
         return configurations;
+    }
+
+    public Set<String> getTypes() {
+        return types;
     }
 
     public boolean isUnresolved() {

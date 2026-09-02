@@ -1,0 +1,17 @@
+plugins {
+    id 'com.jfrog.gradle-dep-tree'
+    id 'java'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Pom-only BOM (packaging=pom, never publishes a .jar) — regression fixture for XRAY-159118.
+    implementation platform('com.fasterxml.jackson:jackson-bom:2.15.2')
+    // Same shape via enforcedPlatform(...), previously only covered by mocks.
+    implementation enforcedPlatform('org.junit:junit-bom:5.10.2')
+    // Regular jar-backed dependency, for contrast.
+    implementation 'joda-time:joda-time:2.2'
+}

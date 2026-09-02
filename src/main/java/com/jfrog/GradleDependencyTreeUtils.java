@@ -9,7 +9,11 @@ import org.gradle.api.artifacts.component.ProjectComponentIdentifier;
 import org.gradle.api.artifacts.result.DependencyResult;
 import org.gradle.api.artifacts.result.ResolvedComponentResult;
 import org.gradle.api.artifacts.result.ResolvedDependencyResult;
+import org.gradle.api.artifacts.result.ResolvedVariantResult;
 import org.gradle.api.artifacts.result.UnresolvedDependencyResult;
+import org.gradle.api.attributes.Attribute;
+import org.gradle.api.attributes.AttributeContainer;
+import org.gradle.api.attributes.Category;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -25,6 +29,9 @@ import java.util.Set;
 public class GradleDependencyTreeUtils {
     // The maximum number of times a single dependency is populated, during the run of each configuration.
     private static final int MAX_DEP_POPULATIONS_IN_CONFIG = 10;
+
+    static final String ARTIFACT_TYPE_JAR = "jar";
+    static final String ARTIFACT_TYPE_POM = "pom";
 
     /**
      * Add Gradle configuration including its all dependencies.
@@ -67,6 +74,8 @@ public class GradleDependencyTreeUtils {
         for (Dependency dependency : configuration.getDependencies()) {
             GradleDependencyNode child = new GradleDependencyNode(configuration.getName());
             child.setUnresolved(true);
+            // No type here (see resolveArtifactType) — the same dependency reaches an actually
+            // resolvable configuration (e.g. compileClasspath extends implementation) that types it correctly.
             if (dependency.getVersion() != null) {
                 // Skip deps with no version (e.g. "implementation gradleApi()").
                 // Use buildModuleId so a null group becomes "unspecified" instead of the literal "null".
@@ -91,6 +100,7 @@ public class GradleDependencyTreeUtils {
         GradleDependencyNode child = new GradleDependencyNode(configurationName);
         if (dependency instanceof UnresolvedDependencyResult) {
             child.setUnresolved(true);
+            // No type here — it failed to resolve, so there's no ResolvedVariantResult to type it by.
             addChild(node, dependency.getRequested().getDisplayName(), child, nodes);
             return;
         }
@@ -106,6 +116,10 @@ public class GradleDependencyTreeUtils {
             return;
         }
         depPopulations.put(nodeId, populations + 1);
+        String artifactType = resolveArtifactType(resolvedDependency);
+        if (artifactType != null) {
+            child.getTypes().add(artifactType);
+        }
         for (DependencyResult dependencyResult : selected.getDependencies()) {
             populateTree(ownerProject, child, configurationName, dependencyResult, new HashSet<>(addedChildren), nodes, depPopulations);
         }
@@ -163,6 +177,45 @@ public class GradleDependencyTreeUtils {
         return Utils.buildModuleId(null, name, null);
     }
 
+    // Matched by name via keySet(), not Category.CATEGORY_ATTRIBUTE directly — see resolveArtifactType.
+    private static final String CATEGORY_ATTRIBUTE_NAME = "org.gradle.category";
+
+    /**
+     * Types a resolved edge "pom" for a platform/BOM dependency, "jar" otherwise, or
+     * {@code null} with no category evidence at all — never guess "jar" with nothing to go on.
+     * <p>
+     * Reads the edge's own {@link ResolvedVariantResult}, not
+     * {@link ResolvedComponentResult#getVariants()}, which returns every variant ever selected
+     * for the component, not just this edge's.
+     * <p>
+     * Matches the attribute by name rather than via {@code Category.CATEGORY_ATTRIBUTE}: on older
+     * Gradle, a plugin jar loaded via an init-script classpath can get an Attribute instance that
+     * doesn't {@code .equals()} the container's own key (classloader isolation), even though the
+     * value is genuinely there — confirmed against real Gradle 5.6.4/6.9/7.4.2/7.6.
+     */
+    static String resolveArtifactType(ResolvedDependencyResult dependency) {
+        ResolvedVariantResult variant = dependency.getResolvedVariant();
+        String categoryName = variant == null ? null : readAttributeValue(variant.getAttributes(), CATEGORY_ATTRIBUTE_NAME);
+        if (categoryName == null) {
+            return null;
+        }
+        if (Category.REGULAR_PLATFORM.equals(categoryName) || Category.ENFORCED_PLATFORM.equals(categoryName)) {
+            return ARTIFACT_TYPE_POM;
+        }
+        return ARTIFACT_TYPE_JAR;
+    }
+
+    /** Reads an attribute's value by name, via keySet() + toString() to avoid a cross-classloader cast. */
+    private static String readAttributeValue(AttributeContainer attributes, String attributeName) {
+        for (Attribute<?> attribute : attributes.keySet()) {
+            if (attributeName.equals(attribute.getName())) {
+                Object value = attributes.getAttribute(attribute);
+                return value == null ? null : value.toString();
+            }
+        }
+        return null;
+    }
+
     /**
      * Add a child to the dependency tree.
      *
@@ -180,6 +233,8 @@ public class GradleDependencyTreeUtils {
             child.getConfigurations().addAll(childToAdd.getConfigurations());
             child.setUnresolved(child.isUnresolved() && childToAdd.isUnresolved());
             child.getChildren().addAll(childToAdd.getChildren());
+            // Union types too: the same GAV can be a platform in one usage and a regular jar dependency in another.
+            child.getTypes().addAll(childToAdd.getTypes());
         }
         parent.getChildren().add(childId);
     }
