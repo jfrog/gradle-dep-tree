@@ -74,7 +74,7 @@ public class GradleDependencyTreeUtils {
         for (Dependency dependency : configuration.getDependencies()) {
             GradleDependencyNode child = new GradleDependencyNode(configuration.getName());
             child.setUnresolved(true);
-            // No type here (see resolveArtifactType) — the same dependency reaches an actually
+            // No type here (see resolveArtifactType) - the same dependency reaches an actually
             // resolvable configuration (e.g. compileClasspath extends implementation) that types it correctly.
             if (dependency.getVersion() != null) {
                 // Skip deps with no version (e.g. "implementation gradleApi()").
@@ -100,7 +100,7 @@ public class GradleDependencyTreeUtils {
         GradleDependencyNode child = new GradleDependencyNode(configurationName);
         if (dependency instanceof UnresolvedDependencyResult) {
             child.setUnresolved(true);
-            // No type here — it failed to resolve, so there's no ResolvedVariantResult to type it by.
+            // No type here - it failed to resolve, so there's no ResolvedVariantResult to type it by.
             addChild(node, dependency.getRequested().getDisplayName(), child, nodes);
             return;
         }
@@ -177,12 +177,12 @@ public class GradleDependencyTreeUtils {
         return Utils.buildModuleId(null, name, null);
     }
 
-    // Matched by name via keySet(), not Category.CATEGORY_ATTRIBUTE directly — see resolveArtifactType.
+    // Matched by name via keySet(), not Category.CATEGORY_ATTRIBUTE directly - see resolveArtifactType.
     private static final String CATEGORY_ATTRIBUTE_NAME = "org.gradle.category";
 
     /**
      * Types a resolved edge "pom" for a platform/BOM dependency, "jar" otherwise, or
-     * {@code null} with no category evidence at all — never guess "jar" with nothing to go on.
+     * {@code null} with no category evidence at all - never guess "jar" with nothing to go on.
      * <p>
      * Reads the edge's own {@link ResolvedVariantResult}, not
      * {@link ResolvedComponentResult#getVariants()}, which returns every variant ever selected
@@ -191,7 +191,7 @@ public class GradleDependencyTreeUtils {
      * Matches the attribute by name rather than via {@code Category.CATEGORY_ATTRIBUTE}: on older
      * Gradle, a plugin jar loaded via an init-script classpath can get an Attribute instance that
      * doesn't {@code .equals()} the container's own key (classloader isolation), even though the
-     * value is genuinely there — confirmed against real Gradle 5.6.4/6.9/7.4.2/7.6.
+     * value is genuinely there - confirmed against real Gradle 5.6.4/6.9/7.4.2/7.6.
      */
     static String resolveArtifactType(ResolvedDependencyResult dependency) {
         ResolvedVariantResult variant = dependency.getResolvedVariant();

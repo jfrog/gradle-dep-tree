@@ -76,6 +76,10 @@ java {
     withSourcesJar()
 }
 
+tasks.withType<Javadoc>().configureEach {
+    options.encoding = "UTF-8"
+}
+
 nexusPublishing {
     repositories {
          sonatype {
