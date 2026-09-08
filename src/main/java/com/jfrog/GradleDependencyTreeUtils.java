@@ -36,16 +36,20 @@ public class GradleDependencyTreeUtils {
     /**
      * Add Gradle configuration including its all dependencies.
      *
-     * @param ownerProject  the project owning {@code configuration}, used to look up sibling
-     *                      subprojects when a project dep has no {@link ModuleVersionIdentifier};
-     *                      may be {@code null}
-     * @param root          the root node
-     * @param configuration resolved or unresolved Gradle configuration
-     * @param nodes         a map of all nodes mapped by their module ID (group:name:version)
+     * @param ownerProject         the project owning {@code configuration}, used to look up sibling
+     *                             subprojects when a project dep has no {@link ModuleVersionIdentifier};
+     *                             may be {@code null}
+     * @param root                 the root node
+     * @param configuration        resolved or unresolved Gradle configuration
+     * @param nodes                a map of all nodes mapped by their module ID (group:name:version)
+     * @param fallbackEligibleIds  ids of nodes encountered while processing a resolvable configuration
+     *                             (see {@link #finalizeUnknownTypes}); a never-resolvable configuration's
+     *                             declared deps (see {@link #addUnresolvedConfiguration}) are never added
+     *                             here, since their real type must come from a resolvable edge elsewhere
      */
-    public static void addConfiguration(Project ownerProject, GradleDependencyNode root, Configuration configuration, Map<String, GradleDependencyNode> nodes) {
+    public static void addConfiguration(Project ownerProject, GradleDependencyNode root, Configuration configuration, Map<String, GradleDependencyNode> nodes, Set<String> fallbackEligibleIds) {
         if (configuration.isCanBeResolved()) {
-            addResolvedConfiguration(ownerProject, root, configuration, nodes);
+            addResolvedConfiguration(ownerProject, root, configuration, nodes, fallbackEligibleIds);
         } else {
             addUnresolvedConfiguration(root, configuration, nodes);
         }
@@ -54,12 +58,12 @@ public class GradleDependencyTreeUtils {
     /**
      * Add resolved configuration. A resolved configuration may contain transitive dependencies.
      */
-    private static void addResolvedConfiguration(Project ownerProject, GradleDependencyNode root, Configuration configuration, Map<String, GradleDependencyNode> nodes) {
+    private static void addResolvedConfiguration(Project ownerProject, GradleDependencyNode root, Configuration configuration, Map<String, GradleDependencyNode> nodes, Set<String> fallbackEligibleIds) {
         root.getConfigurations().add(configuration.getName());
         ResolvedComponentResult componentResult = configuration.getIncoming().getResolutionResult().getRoot();
         Map<String, Integer> depPopulations = new HashMap<>();
         for (DependencyResult dependency : componentResult.getDependencies()) {
-            populateTree(ownerProject, root, configuration.getName(), dependency, new HashSet<>(), nodes, depPopulations);
+            populateTree(ownerProject, root, configuration.getName(), dependency, new HashSet<>(), nodes, depPopulations, fallbackEligibleIds);
         }
     }
 
@@ -95,14 +99,18 @@ public class GradleDependencyTreeUtils {
      * @param addedChildren     a set used to remove duplications to make sure there is no loop in the tree
      * @param nodes             a map of all nodes mapped by their module ID (group:name:version)
      * @param depPopulations    a map of all node population counters mapped by their module ID (group:name:version)
+     * @param fallbackEligibleIds ids of nodes encountered here, i.e. while processing a resolvable
+     *                            configuration (see {@link #finalizeUnknownTypes})
      */
-    private static void populateTree(Project ownerProject, GradleDependencyNode node, String configurationName, DependencyResult dependency, Set<String> addedChildren, Map<String, GradleDependencyNode> nodes, Map<String, Integer> depPopulations) {
+    private static void populateTree(Project ownerProject, GradleDependencyNode node, String configurationName, DependencyResult dependency, Set<String> addedChildren, Map<String, GradleDependencyNode> nodes, Map<String, Integer> depPopulations, Set<String> fallbackEligibleIds) {
         GradleDependencyNode child = new GradleDependencyNode(configurationName);
         if (dependency instanceof UnresolvedDependencyResult) {
             child.setUnresolved(true);
             // No type here - deferred to finalizeUnknownTypes once the whole tree is built, so a
             // guess here can never collide with real evidence discovered elsewhere for the same node.
-            addChild(node, dependency.getRequested().getDisplayName(), child, nodes);
+            String unresolvedId = dependency.getRequested().getDisplayName();
+            fallbackEligibleIds.add(unresolvedId);
+            addChild(node, unresolvedId, child, nodes);
             return;
         }
         ResolvedDependencyResult resolvedDependency = (ResolvedDependencyResult) dependency;
@@ -112,6 +120,7 @@ public class GradleDependencyTreeUtils {
             // No usable identity (external dep not in any repo, or unsupported ComponentIdentifier subtype).
             return;
         }
+        fallbackEligibleIds.add(nodeId);
         int populations = depPopulations.getOrDefault(nodeId, 0);
         if (!addedChildren.add(nodeId) || populations >= MAX_DEP_POPULATIONS_IN_CONFIG) {
             return;
@@ -122,7 +131,7 @@ public class GradleDependencyTreeUtils {
             child.getTypes().add(artifactType);
         }
         for (DependencyResult dependencyResult : selected.getDependencies()) {
-            populateTree(ownerProject, child, configurationName, dependencyResult, new HashSet<>(addedChildren), nodes, depPopulations);
+            populateTree(ownerProject, child, configurationName, dependencyResult, new HashSet<>(addedChildren), nodes, depPopulations, fallbackEligibleIds);
         }
         addChild(node, nodeId, child, nodes);
     }
@@ -246,12 +255,22 @@ public class GradleDependencyTreeUtils {
      * unresolved or no-evidence edge is only a guess, and guessing inline risked unioning a wrong
      * "jar" guess onto a node that a different configuration correctly typed "pom" elsewhere in
      * the same tree - the exact class of bug this project has already shipped once.
+     * <p>
+     * Only defaults ids in {@code fallbackEligibleIds}, i.e. nodes touched while processing a
+     * resolvable configuration. A node reached solely via a never-resolvable configuration's
+     * declared deps (see {@link #addUnresolvedConfiguration}) is deliberately skipped: that path's
+     * whole premise is that the real type comes from a resolvable edge elsewhere, and if it never
+     * arrives (e.g. an excludeConfigurationsPattern that excludes the resolvable configuration but
+     * not the never-resolvable one), guessing "jar" would be a genuine misclassification, not a
+     * safe fallback.
      *
-     * @param nodes a map of all nodes mapped by their module ID (group:name:version)
+     * @param nodes                a map of all nodes mapped by their module ID (group:name:version)
+     * @param fallbackEligibleIds  ids of nodes encountered while processing a resolvable configuration
      */
-    public static void finalizeUnknownTypes(Map<String, GradleDependencyNode> nodes) {
-        for (GradleDependencyNode node : nodes.values()) {
-            if (node.getTypes().isEmpty()) {
+    public static void finalizeUnknownTypes(Map<String, GradleDependencyNode> nodes, Set<String> fallbackEligibleIds) {
+        for (String id : fallbackEligibleIds) {
+            GradleDependencyNode node = nodes.get(id);
+            if (node != null && node.getTypes().isEmpty()) {
                 node.getTypes().add(ARTIFACT_TYPE_JAR);
             }
         }

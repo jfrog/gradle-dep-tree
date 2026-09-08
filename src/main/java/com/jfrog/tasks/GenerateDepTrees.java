@@ -287,15 +287,16 @@ public class GenerateDepTrees extends DefaultTask {
         ConfigurationContainer configsContainer = project.getConfigurations();
         Set<String> names = new HashSet<>(configsContainer.getNames());
         Pattern excludePattern = compileExcludePattern(excludeConfigurationsPattern);
+        Set<String> fallbackEligibleIds = new HashSet<>();
         for (String name : names) {
             if (excludePattern != null && name != null && excludePattern.matcher(name).find()) {
                 continue;
             }
             // Pass `project` so synthesizeProjectNodeId can resolve sibling subprojects
             // (keeps synthesized ids aligned with getProjectModuleId).
-            addConfiguration(project, root, configsContainer.getByName(name), nodes);
+            addConfiguration(project, root, configsContainer.getByName(name), nodes, fallbackEligibleIds);
         }
-        finalizeUnknownTypes(nodes);
+        finalizeUnknownTypes(nodes, fallbackEligibleIds);
         return new GradleDepTreeResults(rootId, nodes);
     }
 
