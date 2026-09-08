@@ -27,6 +27,7 @@ import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 
 import static com.jfrog.GradleDependencyTreeUtils.addConfiguration;
+import static com.jfrog.GradleDependencyTreeUtils.finalizeUnknownTypes;
 
 /**
  * Represents the generateDepTrees Gradle task.
@@ -294,6 +295,7 @@ public class GenerateDepTrees extends DefaultTask {
             // (keeps synthesized ids aligned with getProjectModuleId).
             addConfiguration(project, root, configsContainer.getByName(name), nodes);
         }
+        finalizeUnknownTypes(nodes);
         return new GradleDepTreeResults(rootId, nodes);
     }
 

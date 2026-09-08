@@ -32,6 +32,7 @@ import static com.jfrog.GradleDependencyTreeUtils.ARTIFACT_TYPE_JAR;
 import static com.jfrog.GradleDependencyTreeUtils.ARTIFACT_TYPE_POM;
 import static com.jfrog.GradleDependencyTreeUtils.addChild;
 import static com.jfrog.GradleDependencyTreeUtils.addConfiguration;
+import static com.jfrog.GradleDependencyTreeUtils.finalizeUnknownTypes;
 import static com.jfrog.GradleDependencyTreeUtils.resolveArtifactType;
 import static com.jfrog.GradleDependencyTreeUtils.resolveNodeId;
 import static com.jfrog.GradleDependencyTreeUtils.synthesizeProjectNodeId;
@@ -612,6 +613,7 @@ public class GradleDependencyTreeUtilsTest {
         Map<String, GradleDependencyNode> nodes = new HashMap<>();
 
         addConfiguration(null, root, compileClasspath, nodes);
+        finalizeUnknownTypes(nodes);
 
         GradleDependencyNode node = nodes.get("some.group:some-artifact:1.0.0");
         assertNotNull(node, "Node missing from tree. Nodes: " + nodes.keySet());
@@ -619,6 +621,102 @@ public class GradleDependencyTreeUtilsTest {
         assertEquals(node.getTypes(), Sets.newHashSet(ARTIFACT_TYPE_JAR),
                 "An unresolved dependency must default to \"jar\" so curation-audit still attempts "
                         + "a check - leaving it type-less silently skips the check entirely.");
+    }
+
+    @Test
+    public void testFinalizeUnknownTypes_emptyTypes_defaultsToJar() {
+        GradleDependencyNode node = new GradleDependencyNode("implementation");
+        Map<String, GradleDependencyNode> nodes = new HashMap<>();
+        nodes.put("some:node:1.0", node);
+
+        finalizeUnknownTypes(nodes);
+
+        assertEquals(node.getTypes(), Sets.newHashSet(ARTIFACT_TYPE_JAR));
+    }
+
+    @Test
+    public void testFinalizeUnknownTypes_alreadyTyped_leftUntouched() {
+        GradleDependencyNode node = new GradleDependencyNode("implementation");
+        node.getTypes().add(ARTIFACT_TYPE_POM);
+        Map<String, GradleDependencyNode> nodes = new HashMap<>();
+        nodes.put("some:node:1.0", node);
+
+        finalizeUnknownTypes(nodes);
+
+        assertEquals(node.getTypes(), Sets.newHashSet(ARTIFACT_TYPE_POM));
+    }
+
+    /**
+     * PR review finding: the same GAV can be an UnresolvedDependencyResult in one configuration
+     * (e.g. testCompileClasspath) and a genuinely resolved platform edge in another
+     * (compileClasspath) - addChild unions both nodes' types, so guessing "jar" inline for the
+     * unresolved edge would re-create the exact {jar, pom} bug 3.3.1 fixed, just via a different
+     * trigger. finalizeUnknownTypes must only apply the "jar" guess once the whole tree is built
+     * and no configuration ever supplied real evidence for this node.
+     */
+    @Test
+    public void testFinalizeUnknownTypes_unresolvedInOneConfigResolvedPlatformInAnother_staysPomOnly() {
+        // testCompileClasspath: the same BOM fails to resolve here.
+        ComponentSelector requested = mock(ComponentSelector.class);
+        when(requested.getDisplayName()).thenReturn("org.example:some-bom:1.0.0");
+
+        UnresolvedDependencyResult unresolvedDep = mock(UnresolvedDependencyResult.class);
+        when(unresolvedDep.getRequested()).thenReturn(requested);
+
+        ResolvedComponentResult testRootComponent = mock(ResolvedComponentResult.class);
+        doReturn(setOf(unresolvedDep)).when(testRootComponent).getDependencies();
+
+        ResolutionResult testResolutionResult = mock(ResolutionResult.class);
+        when(testResolutionResult.getRoot()).thenReturn(testRootComponent);
+
+        ResolvableDependencies testIncoming = mock(ResolvableDependencies.class);
+        when(testIncoming.getResolutionResult()).thenReturn(testResolutionResult);
+
+        Configuration testCompileClasspath = mock(Configuration.class);
+        when(testCompileClasspath.isCanBeResolved()).thenReturn(true);
+        when(testCompileClasspath.getName()).thenReturn("testCompileClasspath");
+        when(testCompileClasspath.getIncoming()).thenReturn(testIncoming);
+
+        // compileClasspath: the same BOM resolves fine here, correctly typed "pom".
+        ModuleVersionIdentifier bomMv = mock(ModuleVersionIdentifier.class);
+        when(bomMv.toString()).thenReturn("org.example:some-bom:1.0.0");
+
+        ResolvedComponentResult bomComponent = mock(ResolvedComponentResult.class);
+        when(bomComponent.getModuleVersion()).thenReturn(bomMv);
+        doReturn(Collections.emptySet()).when(bomComponent).getDependencies();
+
+        ResolvedVariantResult bomVariant = variantWithCategoryName(Category.REGULAR_PLATFORM);
+        ResolvedDependencyResult bomDep = mock(ResolvedDependencyResult.class);
+        when(bomDep.getSelected()).thenReturn(bomComponent);
+        when(bomDep.getResolvedVariant()).thenReturn(bomVariant);
+
+        ResolvedComponentResult compileRootComponent = mock(ResolvedComponentResult.class);
+        doReturn(setOf(bomDep)).when(compileRootComponent).getDependencies();
+
+        ResolutionResult compileResolutionResult = mock(ResolutionResult.class);
+        when(compileResolutionResult.getRoot()).thenReturn(compileRootComponent);
+
+        ResolvableDependencies compileIncoming = mock(ResolvableDependencies.class);
+        when(compileIncoming.getResolutionResult()).thenReturn(compileResolutionResult);
+
+        Configuration compileClasspath = mock(Configuration.class);
+        when(compileClasspath.isCanBeResolved()).thenReturn(true);
+        when(compileClasspath.getName()).thenReturn("compileClasspath");
+        when(compileClasspath.getIncoming()).thenReturn(compileIncoming);
+
+        GradleDependencyNode root = new GradleDependencyNode();
+        Map<String, GradleDependencyNode> nodes = new HashMap<>();
+
+        // Same order as GenerateDepTrees: process every configuration, then finalize once.
+        addConfiguration(null, root, testCompileClasspath, nodes);
+        addConfiguration(null, root, compileClasspath, nodes);
+        finalizeUnknownTypes(nodes);
+
+        GradleDependencyNode bomNode = nodes.get("org.example:some-bom:1.0.0");
+        assertNotNull(bomNode, "BOM node missing from tree. Nodes: " + nodes.keySet());
+        assertEquals(bomNode.getTypes(), Sets.newHashSet(ARTIFACT_TYPE_POM),
+                "Must stay {\"pom\"} - the unresolved edge in testCompileClasspath must not "
+                        + "contribute a \"jar\" guess once compileClasspath supplied real evidence.");
     }
 
     /**

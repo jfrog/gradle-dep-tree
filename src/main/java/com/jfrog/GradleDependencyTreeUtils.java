@@ -100,9 +100,8 @@ public class GradleDependencyTreeUtils {
         GradleDependencyNode child = new GradleDependencyNode(configurationName);
         if (dependency instanceof UnresolvedDependencyResult) {
             child.setUnresolved(true);
-            // Default to jar: curation-audit must still attempt a check even when resolution
-            // fails, and there's no ResolvedVariantResult here to type it by more accurately.
-            child.getTypes().add(ARTIFACT_TYPE_JAR);
+            // No type here - deferred to finalizeUnknownTypes once the whole tree is built, so a
+            // guess here can never collide with real evidence discovered elsewhere for the same node.
             addChild(node, dependency.getRequested().getDisplayName(), child, nodes);
             return;
         }
@@ -239,5 +238,22 @@ public class GradleDependencyTreeUtils {
             child.getTypes().addAll(childToAdd.getTypes());
         }
         parent.getChildren().add(childId);
+    }
+
+    /**
+     * Defaults every still-type-less node to "jar", once the whole tree is built. Called after
+     * all configurations have been processed (see GenerateDepTrees), not inline per edge: an
+     * unresolved or no-evidence edge is only a guess, and guessing inline risked unioning a wrong
+     * "jar" guess onto a node that a different configuration correctly typed "pom" elsewhere in
+     * the same tree - the exact class of bug this project has already shipped once.
+     *
+     * @param nodes a map of all nodes mapped by their module ID (group:name:version)
+     */
+    public static void finalizeUnknownTypes(Map<String, GradleDependencyNode> nodes) {
+        for (GradleDependencyNode node : nodes.values()) {
+            if (node.getTypes().isEmpty()) {
+                node.getTypes().add(ARTIFACT_TYPE_JAR);
+            }
+        }
     }
 }
