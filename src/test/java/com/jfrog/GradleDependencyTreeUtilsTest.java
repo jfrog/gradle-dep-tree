@@ -7,6 +7,7 @@ import org.gradle.api.artifacts.DependencySet;
 import org.gradle.api.artifacts.ModuleVersionIdentifier;
 import org.gradle.api.artifacts.ResolvableDependencies;
 import org.gradle.api.artifacts.component.ComponentIdentifier;
+import org.gradle.api.artifacts.component.ComponentSelector;
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier;
 import org.gradle.api.artifacts.component.ProjectComponentIdentifier;
 import org.gradle.api.artifacts.result.DependencyResult;
@@ -14,6 +15,7 @@ import org.gradle.api.artifacts.result.ResolutionResult;
 import org.gradle.api.artifacts.result.ResolvedComponentResult;
 import org.gradle.api.artifacts.result.ResolvedDependencyResult;
 import org.gradle.api.artifacts.result.ResolvedVariantResult;
+import org.gradle.api.artifacts.result.UnresolvedDependencyResult;
 import org.gradle.api.attributes.Attribute;
 import org.gradle.api.attributes.AttributeContainer;
 import org.gradle.api.attributes.Category;
@@ -575,6 +577,48 @@ public class GradleDependencyTreeUtilsTest {
         assertTrue(node.getTypes().isEmpty(),
                 "A dependency declared only on a never-resolvable configuration must have no type "
                         + "guessed — the real type comes from a resolved edge elsewhere.");
+    }
+
+    /**
+     * Regression test (jfrog-cli-security#876): a dependency Gradle fails to resolve within an
+     * otherwise-resolvable configuration must still default to "jar" - curation-audit needs to
+     * attempt a check even when resolution itself fails (that's the whole point of curation-audit
+     * surviving a broken/partial install). Unlike the never-resolvable-configuration case above,
+     * there is no other, correctly-resolved edge anywhere that could supply the real type instead.
+     */
+    @Test
+    public void testAddConfiguration_unresolvedDependencyResultWithinResolvedConfig_defaultsToJar() {
+        ComponentSelector requested = mock(ComponentSelector.class);
+        when(requested.getDisplayName()).thenReturn("some.group:some-artifact:1.0.0");
+
+        UnresolvedDependencyResult unresolvedDep = mock(UnresolvedDependencyResult.class);
+        when(unresolvedDep.getRequested()).thenReturn(requested);
+
+        ResolvedComponentResult rootComponent = mock(ResolvedComponentResult.class);
+        doReturn(setOf(unresolvedDep)).when(rootComponent).getDependencies();
+
+        ResolutionResult resolutionResult = mock(ResolutionResult.class);
+        when(resolutionResult.getRoot()).thenReturn(rootComponent);
+
+        ResolvableDependencies incoming = mock(ResolvableDependencies.class);
+        when(incoming.getResolutionResult()).thenReturn(resolutionResult);
+
+        Configuration compileClasspath = mock(Configuration.class);
+        when(compileClasspath.isCanBeResolved()).thenReturn(true);
+        when(compileClasspath.getName()).thenReturn("compileClasspath");
+        when(compileClasspath.getIncoming()).thenReturn(incoming);
+
+        GradleDependencyNode root = new GradleDependencyNode();
+        Map<String, GradleDependencyNode> nodes = new HashMap<>();
+
+        addConfiguration(null, root, compileClasspath, nodes);
+
+        GradleDependencyNode node = nodes.get("some.group:some-artifact:1.0.0");
+        assertNotNull(node, "Node missing from tree. Nodes: " + nodes.keySet());
+        assertTrue(node.isUnresolved());
+        assertEquals(node.getTypes(), Sets.newHashSet(ARTIFACT_TYPE_JAR),
+                "An unresolved dependency must default to \"jar\" so curation-audit still attempts "
+                        + "a check - leaving it type-less silently skips the check entirely.");
     }
 
     /**

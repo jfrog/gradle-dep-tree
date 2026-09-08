@@ -100,7 +100,9 @@ public class GradleDependencyTreeUtils {
         GradleDependencyNode child = new GradleDependencyNode(configurationName);
         if (dependency instanceof UnresolvedDependencyResult) {
             child.setUnresolved(true);
-            // No type here - it failed to resolve, so there's no ResolvedVariantResult to type it by.
+            // Default to jar: curation-audit must still attempt a check even when resolution
+            // fails, and there's no ResolvedVariantResult here to type it by more accurately.
+            child.getTypes().add(ARTIFACT_TYPE_JAR);
             addChild(node, dependency.getRequested().getDisplayName(), child, nodes);
             return;
         }
