@@ -7,6 +7,7 @@ import org.gradle.api.artifacts.DependencySet;
 import org.gradle.api.artifacts.ModuleVersionIdentifier;
 import org.gradle.api.artifacts.ResolvableDependencies;
 import org.gradle.api.artifacts.component.ComponentIdentifier;
+import org.gradle.api.artifacts.component.ComponentSelector;
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier;
 import org.gradle.api.artifacts.component.ProjectComponentIdentifier;
 import org.gradle.api.artifacts.result.DependencyResult;
@@ -14,6 +15,7 @@ import org.gradle.api.artifacts.result.ResolutionResult;
 import org.gradle.api.artifacts.result.ResolvedComponentResult;
 import org.gradle.api.artifacts.result.ResolvedDependencyResult;
 import org.gradle.api.artifacts.result.ResolvedVariantResult;
+import org.gradle.api.artifacts.result.UnresolvedDependencyResult;
 import org.gradle.api.attributes.Attribute;
 import org.gradle.api.attributes.AttributeContainer;
 import org.gradle.api.attributes.Category;
@@ -22,6 +24,7 @@ import org.testng.collections.Sets;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -30,6 +33,7 @@ import static com.jfrog.GradleDependencyTreeUtils.ARTIFACT_TYPE_JAR;
 import static com.jfrog.GradleDependencyTreeUtils.ARTIFACT_TYPE_POM;
 import static com.jfrog.GradleDependencyTreeUtils.addChild;
 import static com.jfrog.GradleDependencyTreeUtils.addConfiguration;
+import static com.jfrog.GradleDependencyTreeUtils.finalizeUnknownTypes;
 import static com.jfrog.GradleDependencyTreeUtils.resolveArtifactType;
 import static com.jfrog.GradleDependencyTreeUtils.resolveNodeId;
 import static com.jfrog.GradleDependencyTreeUtils.synthesizeProjectNodeId;
@@ -179,8 +183,9 @@ public class GradleDependencyTreeUtilsTest {
         GradleDependencyNode root = new GradleDependencyNode();
         Map<String, GradleDependencyNode> nodes = new HashMap<>();
         nodes.put("root", root);
+        Set<String> fallbackEligibleIds = new HashSet<>();
 
-        addConfiguration(null, root, configuration, nodes);
+        addConfiguration(null, root, configuration, nodes, fallbackEligibleIds);
 
         GradleDependencyNode bomNode = nodes.get("org.springframework.boot:spring-boot-dependencies:4.1.0");
         assertNotNull(bomNode, "BOM node missing from tree. Nodes: " + nodes.keySet());
@@ -363,8 +368,9 @@ public class GradleDependencyTreeUtilsTest {
         GradleDependencyNode root = new GradleDependencyNode();
         Map<String, GradleDependencyNode> nodes = new HashMap<>();
         nodes.put("root", root);
+        Set<String> fallbackEligibleIds = new HashSet<>();
 
-        addConfiguration(null, root, configuration, nodes);
+        addConfiguration(null, root, configuration, nodes, fallbackEligibleIds);
 
         assertTrue(nodes.containsKey("unspecified:middle:unspecified"),
                 "Synthesized project node id is missing — populateTree dropped the project dep.");
@@ -430,8 +436,9 @@ public class GradleDependencyTreeUtilsTest {
         GradleDependencyNode root = new GradleDependencyNode();
         Map<String, GradleDependencyNode> nodes = new HashMap<>();
         nodes.put("root", root);
+        Set<String> fallbackEligibleIds = new HashSet<>();
 
-        addConfiguration(ownerProject, root, configuration, nodes);
+        addConfiguration(ownerProject, root, configuration, nodes, fallbackEligibleIds);
 
         assertTrue(nodes.containsKey("skyscraper:middle:unspecified"),
                 "Synthesized middle id must equal getProjectModuleId's output ('skyscraper:middle:unspecified'); "
@@ -475,8 +482,9 @@ public class GradleDependencyTreeUtilsTest {
         GradleDependencyNode root = new GradleDependencyNode();
         Map<String, GradleDependencyNode> nodes = new HashMap<>();
         nodes.put("root", root);
+        Set<String> fallbackEligibleIds = new HashSet<>();
 
-        addConfiguration(null, root, configuration, nodes);
+        addConfiguration(null, root, configuration, nodes, fallbackEligibleIds);
 
         // Root learns the configuration name but no orphaned child gets added.
         assertTrue(root.getChildren().isEmpty());
@@ -505,8 +513,9 @@ public class GradleDependencyTreeUtilsTest {
 
         GradleDependencyNode root = new GradleDependencyNode();
         Map<String, GradleDependencyNode> nodes = new HashMap<>();
+        Set<String> fallbackEligibleIds = new HashSet<>();
 
-        addConfiguration(null, root, configuration, nodes);
+        addConfiguration(null, root, configuration, nodes, fallbackEligibleIds);
 
         assertTrue(nodes.containsKey("unspecified:foo:1.0"),
                 "Expected centralised 'unspecified:foo:1.0' node id, but found: " + nodes.keySet()
@@ -534,8 +543,9 @@ public class GradleDependencyTreeUtilsTest {
 
         GradleDependencyNode root = new GradleDependencyNode();
         Map<String, GradleDependencyNode> nodes = new HashMap<>();
+        Set<String> fallbackEligibleIds = new HashSet<>();
 
-        addConfiguration(null, root, configuration, nodes);
+        addConfiguration(null, root, configuration, nodes, fallbackEligibleIds);
 
         assertTrue(nodes.containsKey("com.example:foo:1.0"),
                 "Common-case id assembly must be unchanged. Nodes: " + nodes.keySet());
@@ -567,14 +577,209 @@ public class GradleDependencyTreeUtilsTest {
 
         GradleDependencyNode root = new GradleDependencyNode();
         Map<String, GradleDependencyNode> nodes = new HashMap<>();
+        Set<String> fallbackEligibleIds = new HashSet<>();
 
-        addConfiguration(null, root, configuration, nodes);
+        addConfiguration(null, root, configuration, nodes, fallbackEligibleIds);
 
         GradleDependencyNode node = nodes.get("org.springframework.boot:spring-boot-dependencies:4.1.0");
         assertNotNull(node, "Node missing from tree. Nodes: " + nodes.keySet());
         assertTrue(node.getTypes().isEmpty(),
                 "A dependency declared only on a never-resolvable configuration must have no type "
                         + "guessed — the real type comes from a resolved edge elsewhere.");
+    }
+
+    /**
+     * PR review finding: a tree containing solely a never-resolvable configuration (no resolvable
+     * configuration ever ran, e.g. all resolvable configs were excluded via
+     * excludeConfigurationsPattern) must leave the node type-less even after finalizeUnknownTypes -
+     * that pass must only default ids seen while processing a resolvable configuration, not every
+     * id GenerateDepTrees happens to pass it.
+     */
+    @Test
+    public void testFinalizeUnknownTypes_onlyNeverResolvableConfigurationRan_typesStayEmpty() {
+        Dependency dep = mock(Dependency.class);
+        when(dep.getGroup()).thenReturn("org.springframework.boot");
+        when(dep.getName()).thenReturn("spring-boot-dependencies");
+        when(dep.getVersion()).thenReturn("4.1.0");
+
+        DependencySet depSet = mock(DependencySet.class);
+        when(depSet.iterator()).thenAnswer(invocation -> Collections.singletonList(dep).iterator());
+
+        Configuration implementation = mock(Configuration.class);
+        when(implementation.isCanBeResolved()).thenReturn(false);
+        when(implementation.getName()).thenReturn("implementation");
+        when(implementation.getDependencies()).thenReturn(depSet);
+
+        GradleDependencyNode root = new GradleDependencyNode();
+        Map<String, GradleDependencyNode> nodes = new HashMap<>();
+        Set<String> fallbackEligibleIds = new HashSet<>();
+
+        addConfiguration(null, root, implementation, nodes, fallbackEligibleIds);
+        finalizeUnknownTypes(nodes, fallbackEligibleIds);
+
+        GradleDependencyNode node = nodes.get("org.springframework.boot:spring-boot-dependencies:4.1.0");
+        assertNotNull(node, "Node missing from tree. Nodes: " + nodes.keySet());
+        assertTrue(node.getTypes().isEmpty(),
+                "finalizeUnknownTypes must not default this node to \"jar\" - it was only ever seen "
+                        + "via a never-resolvable configuration, so there is no real evidence for its type, "
+                        + "and no resolvable configuration ran to disprove that.");
+    }
+
+    /**
+     * Regression test (jfrog-cli-security#876): a dependency Gradle fails to resolve within an
+     * otherwise-resolvable configuration must still default to "jar" - curation-audit needs to
+     * attempt a check even when resolution itself fails (that's the whole point of curation-audit
+     * surviving a broken/partial install). Unlike the never-resolvable-configuration case above,
+     * there is no other, correctly-resolved edge anywhere that could supply the real type instead.
+     */
+    @Test
+    public void testAddConfiguration_unresolvedDependencyResultWithinResolvedConfig_defaultsToJar() {
+        ComponentSelector requested = mock(ComponentSelector.class);
+        when(requested.getDisplayName()).thenReturn("some.group:some-artifact:1.0.0");
+
+        UnresolvedDependencyResult unresolvedDep = mock(UnresolvedDependencyResult.class);
+        when(unresolvedDep.getRequested()).thenReturn(requested);
+
+        ResolvedComponentResult rootComponent = mock(ResolvedComponentResult.class);
+        doReturn(setOf(unresolvedDep)).when(rootComponent).getDependencies();
+
+        ResolutionResult resolutionResult = mock(ResolutionResult.class);
+        when(resolutionResult.getRoot()).thenReturn(rootComponent);
+
+        ResolvableDependencies incoming = mock(ResolvableDependencies.class);
+        when(incoming.getResolutionResult()).thenReturn(resolutionResult);
+
+        Configuration compileClasspath = mock(Configuration.class);
+        when(compileClasspath.isCanBeResolved()).thenReturn(true);
+        when(compileClasspath.getName()).thenReturn("compileClasspath");
+        when(compileClasspath.getIncoming()).thenReturn(incoming);
+
+        GradleDependencyNode root = new GradleDependencyNode();
+        Map<String, GradleDependencyNode> nodes = new HashMap<>();
+        Set<String> fallbackEligibleIds = new HashSet<>();
+
+        addConfiguration(null, root, compileClasspath, nodes, fallbackEligibleIds);
+        finalizeUnknownTypes(nodes, fallbackEligibleIds);
+
+        GradleDependencyNode node = nodes.get("some.group:some-artifact:1.0.0");
+        assertNotNull(node, "Node missing from tree. Nodes: " + nodes.keySet());
+        assertTrue(node.isUnresolved());
+        assertEquals(node.getTypes(), Sets.newHashSet(ARTIFACT_TYPE_JAR),
+                "An unresolved dependency must default to \"jar\" so curation-audit still attempts "
+                        + "a check - leaving it type-less silently skips the check entirely.");
+    }
+
+    @Test
+    public void testFinalizeUnknownTypes_emptyTypes_defaultsToJar() {
+        GradleDependencyNode node = new GradleDependencyNode("implementation");
+        Map<String, GradleDependencyNode> nodes = new HashMap<>();
+        nodes.put("some:node:1.0", node);
+        Set<String> fallbackEligibleIds = Sets.newHashSet("some:node:1.0");
+
+        finalizeUnknownTypes(nodes, fallbackEligibleIds);
+
+        assertEquals(node.getTypes(), Sets.newHashSet(ARTIFACT_TYPE_JAR));
+    }
+
+    @Test
+    public void testFinalizeUnknownTypes_alreadyTyped_leftUntouched() {
+        GradleDependencyNode node = new GradleDependencyNode("implementation");
+        node.getTypes().add(ARTIFACT_TYPE_POM);
+        Map<String, GradleDependencyNode> nodes = new HashMap<>();
+        nodes.put("some:node:1.0", node);
+        Set<String> fallbackEligibleIds = Sets.newHashSet("some:node:1.0");
+
+        finalizeUnknownTypes(nodes, fallbackEligibleIds);
+
+        assertEquals(node.getTypes(), Sets.newHashSet(ARTIFACT_TYPE_POM));
+    }
+
+    @Test
+    public void testFinalizeUnknownTypes_idNotFallbackEligible_leftUntouched() {
+        GradleDependencyNode node = new GradleDependencyNode("implementation");
+        Map<String, GradleDependencyNode> nodes = new HashMap<>();
+        nodes.put("some:node:1.0", node);
+        Set<String> fallbackEligibleIds = new HashSet<>();
+
+        finalizeUnknownTypes(nodes, fallbackEligibleIds);
+
+        assertTrue(node.getTypes().isEmpty(),
+                "An id never seen while processing a resolvable configuration must not be defaulted, "
+                        + "even if its types are empty.");
+    }
+
+    /**
+     * PR review finding: the same GAV can be an UnresolvedDependencyResult in one configuration
+     * (e.g. testCompileClasspath) and a genuinely resolved platform edge in another
+     * (compileClasspath) - addChild unions both nodes' types, so guessing "jar" inline for the
+     * unresolved edge would re-create the exact {jar, pom} bug 3.3.1 fixed, just via a different
+     * trigger. finalizeUnknownTypes must only apply the "jar" guess once the whole tree is built
+     * and no configuration ever supplied real evidence for this node.
+     */
+    @Test
+    public void testFinalizeUnknownTypes_unresolvedInOneConfigResolvedPlatformInAnother_staysPomOnly() {
+        // testCompileClasspath: the same BOM fails to resolve here.
+        ComponentSelector requested = mock(ComponentSelector.class);
+        when(requested.getDisplayName()).thenReturn("org.example:some-bom:1.0.0");
+
+        UnresolvedDependencyResult unresolvedDep = mock(UnresolvedDependencyResult.class);
+        when(unresolvedDep.getRequested()).thenReturn(requested);
+
+        ResolvedComponentResult testRootComponent = mock(ResolvedComponentResult.class);
+        doReturn(setOf(unresolvedDep)).when(testRootComponent).getDependencies();
+
+        ResolutionResult testResolutionResult = mock(ResolutionResult.class);
+        when(testResolutionResult.getRoot()).thenReturn(testRootComponent);
+
+        ResolvableDependencies testIncoming = mock(ResolvableDependencies.class);
+        when(testIncoming.getResolutionResult()).thenReturn(testResolutionResult);
+
+        Configuration testCompileClasspath = mock(Configuration.class);
+        when(testCompileClasspath.isCanBeResolved()).thenReturn(true);
+        when(testCompileClasspath.getName()).thenReturn("testCompileClasspath");
+        when(testCompileClasspath.getIncoming()).thenReturn(testIncoming);
+
+        // compileClasspath: the same BOM resolves fine here, correctly typed "pom".
+        ModuleVersionIdentifier bomMv = mock(ModuleVersionIdentifier.class);
+        when(bomMv.toString()).thenReturn("org.example:some-bom:1.0.0");
+
+        ResolvedComponentResult bomComponent = mock(ResolvedComponentResult.class);
+        when(bomComponent.getModuleVersion()).thenReturn(bomMv);
+        doReturn(Collections.emptySet()).when(bomComponent).getDependencies();
+
+        ResolvedVariantResult bomVariant = variantWithCategoryName(Category.REGULAR_PLATFORM);
+        ResolvedDependencyResult bomDep = mock(ResolvedDependencyResult.class);
+        when(bomDep.getSelected()).thenReturn(bomComponent);
+        when(bomDep.getResolvedVariant()).thenReturn(bomVariant);
+
+        ResolvedComponentResult compileRootComponent = mock(ResolvedComponentResult.class);
+        doReturn(setOf(bomDep)).when(compileRootComponent).getDependencies();
+
+        ResolutionResult compileResolutionResult = mock(ResolutionResult.class);
+        when(compileResolutionResult.getRoot()).thenReturn(compileRootComponent);
+
+        ResolvableDependencies compileIncoming = mock(ResolvableDependencies.class);
+        when(compileIncoming.getResolutionResult()).thenReturn(compileResolutionResult);
+
+        Configuration compileClasspath = mock(Configuration.class);
+        when(compileClasspath.isCanBeResolved()).thenReturn(true);
+        when(compileClasspath.getName()).thenReturn("compileClasspath");
+        when(compileClasspath.getIncoming()).thenReturn(compileIncoming);
+
+        GradleDependencyNode root = new GradleDependencyNode();
+        Map<String, GradleDependencyNode> nodes = new HashMap<>();
+        Set<String> fallbackEligibleIds = new HashSet<>();
+
+        // Same order as GenerateDepTrees: process every configuration, then finalize once.
+        addConfiguration(null, root, testCompileClasspath, nodes, fallbackEligibleIds);
+        addConfiguration(null, root, compileClasspath, nodes, fallbackEligibleIds);
+        finalizeUnknownTypes(nodes, fallbackEligibleIds);
+
+        GradleDependencyNode bomNode = nodes.get("org.example:some-bom:1.0.0");
+        assertNotNull(bomNode, "BOM node missing from tree. Nodes: " + nodes.keySet());
+        assertEquals(bomNode.getTypes(), Sets.newHashSet(ARTIFACT_TYPE_POM),
+                "Must stay {\"pom\"} - the unresolved edge in testCompileClasspath must not "
+                        + "contribute a \"jar\" guess once compileClasspath supplied real evidence.");
     }
 
     /**
@@ -628,9 +833,10 @@ public class GradleDependencyTreeUtilsTest {
 
         GradleDependencyNode root = new GradleDependencyNode();
         Map<String, GradleDependencyNode> nodes = new HashMap<>();
+        Set<String> fallbackEligibleIds = new HashSet<>();
 
-        addConfiguration(null, root, implementation, nodes);
-        addConfiguration(null, root, compileClasspath, nodes);
+        addConfiguration(null, root, implementation, nodes, fallbackEligibleIds);
+        addConfiguration(null, root, compileClasspath, nodes, fallbackEligibleIds);
 
         GradleDependencyNode bomNode = nodes.get("org.springframework.boot:spring-boot-dependencies:4.1.0");
         assertNotNull(bomNode, "BOM node missing from tree. Nodes: " + nodes.keySet());
@@ -669,8 +875,9 @@ public class GradleDependencyTreeUtilsTest {
 
         GradleDependencyNode root = new GradleDependencyNode();
         Map<String, GradleDependencyNode> nodes = new HashMap<>();
+        Set<String> fallbackEligibleIds = new HashSet<>();
 
-        addConfiguration(null, root, compileClasspath, nodes);
+        addConfiguration(null, root, compileClasspath, nodes, fallbackEligibleIds);
 
         GradleDependencyNode depNode = nodes.get("some.group:some-artifact:1.0.0");
         assertNotNull(depNode, "Node missing from tree. Nodes: " + nodes.keySet());
@@ -695,8 +902,9 @@ public class GradleDependencyTreeUtilsTest {
 
         GradleDependencyNode root = new GradleDependencyNode();
         Map<String, GradleDependencyNode> nodes = new HashMap<>();
+        Set<String> fallbackEligibleIds = new HashSet<>();
 
-        addConfiguration(null, root, configuration, nodes);
+        addConfiguration(null, root, configuration, nodes, fallbackEligibleIds);
 
         assertTrue(root.getChildren().isEmpty(),
                 "Dependencies without a version must be skipped (gradleApi()-style).");
